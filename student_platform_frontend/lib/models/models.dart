@@ -1,0 +1,293 @@
+class AuthResponse {
+  final String token;
+  final String username;
+  final String fullName;
+  final String role;
+
+  AuthResponse({
+    required this.token,
+    required this.username,
+    required this.fullName,
+    required this.role,
+  });
+
+  factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    return AuthResponse(
+      token: json['token'],
+      username: json['username'],
+      fullName: json['fullName'],
+      role: json['role'],
+    );
+  }
+}
+
+class Subject {
+  final int id;
+  final String name;
+  final String description;
+
+  Subject({required this.id, required this.name, required this.description});
+
+  factory Subject.fromJson(Map<String, dynamic> json) {
+    return Subject(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+    );
+  }
+}
+
+class Topic {
+  final int id;
+  final int subjectId;
+  final String title;
+  final String content;
+  final List<TopicQuiz> quizzes;
+  final List<Assignment> assignments;
+  final List<TopicDocument> documents;
+  final List<TopicVideo> videos;
+
+  Topic({
+    required this.id,
+    required this.subjectId,
+    required this.title,
+    required this.content,
+    this.quizzes = const [],
+    this.assignments = const [],
+    this.documents = const [],
+    this.videos = const [],
+  });
+
+  factory Topic.fromJson(Map<String, dynamic> json) {
+    return Topic(
+      id: json['id'],
+      subjectId: json['subjectId'],
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      quizzes: json['quizzes'] != null
+          ? (json['quizzes'] as List).map((i) => TopicQuiz.fromJson(i)).toList()
+          : [],
+      assignments: json['assignments'] != null
+          ? (json['assignments'] as List).map((i) => Assignment.fromJson(i)).toList()
+          : [],
+      documents: (json['documents'] as List?)
+              ?.map((d) => TopicDocument.fromJson(d))
+              .toList() ??
+          [],
+      videos: (json['videos'] as List?)
+              ?.map((v) => TopicVideo.fromJson(v))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class TopicVideo {
+  final int id;
+  final int topicId;
+  final String title;
+  final String youtubeUrl;
+
+  TopicVideo({
+    required this.id,
+    required this.topicId,
+    required this.title,
+    required this.youtubeUrl,
+  });
+
+  factory TopicVideo.fromJson(Map<String, dynamic> json) {
+    return TopicVideo(
+      id: json['id'],
+      topicId: json['topicId'],
+      title: json['title'] ?? '',
+      youtubeUrl: json['youtubeUrl'] ?? '',
+    );
+  }
+}
+
+class TopicDocument {
+  final int id;
+  final int topicId;
+  final String title;
+  final String filePath;
+  final String fileName;
+
+  TopicDocument({
+    required this.id,
+    required this.topicId,
+    required this.title,
+    required this.filePath,
+    required this.fileName,
+  });
+
+  factory TopicDocument.fromJson(Map<String, dynamic> json) {
+    return TopicDocument(
+      id: json['id'],
+      topicId: json['topicId'],
+      title: json['title'] ?? '',
+      filePath: json['filePath'] ?? '',
+      fileName: json['fileName'] ?? '',
+    );
+  }
+}
+
+class TopicQuiz {
+  final int id;
+  final int topicId;
+  final String title;
+  final String content;
+  final int timeLimitMinutes;
+  final String? imagePath;
+  final List<TestQuestion> questions;
+
+  TopicQuiz({
+    required this.id,
+    required this.topicId,
+    required this.title,
+    required this.content,
+    required this.timeLimitMinutes,
+    this.imagePath,
+    this.questions = const [],
+  });
+
+  factory TopicQuiz.fromJson(Map<String, dynamic> json) {
+    return TopicQuiz(
+      id: json['id'],
+      topicId: json['topicId'],
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      timeLimitMinutes: json['timeLimitMinutes'] ?? 0,
+      imagePath: json['imagePath'],
+      questions: json['questions'] != null
+          ? (json['questions'] as List).map((i) => TestQuestion.fromJson(i)).toList()
+          : [],
+    );
+  }
+}
+
+class TestQuestion {
+  final int id;
+  final int quizId;
+  final String title;
+  final String question;
+  final String? imagePath;
+  final List<TestOption> options;
+
+  TestQuestion({
+    required this.id,
+    required this.quizId,
+    required this.title,
+    required this.question,
+    this.imagePath,
+    this.options = const [],
+  });
+
+  factory TestQuestion.fromJson(Map<String, dynamic> json) {
+    return TestQuestion(
+      id: json['id'],
+      quizId: json['quizId'] ?? 0,
+      title: json['title'] ?? '',
+      question: json['question'] ?? '',
+      imagePath: json['imagePath'],
+      options: json['options'] != null
+          ? (json['options'] as List).map((i) => TestOption.fromJson(i)).toList()
+          : [],
+    );
+  }
+}
+
+class TestOption {
+  final int id;
+  final int questionId;
+  final String optionText;
+  final bool isCorrect;
+
+  TestOption({
+    required this.id,
+    required this.questionId,
+    required this.optionText,
+    required this.isCorrect,
+  });
+
+  factory TestOption.fromJson(Map<String, dynamic> json) {
+    return TestOption(
+      id: json['id'],
+      questionId: json['questionId'] ?? 0,
+      optionText: json['optionText'] ?? '',
+      isCorrect: json['isCorrect'] ?? false,
+    );
+  }
+}
+
+class Assignment {
+  final int id;
+  final int topicId;
+  final String title;
+  final String description;
+  final int maxScore;
+  final DateTime? deadline;
+  final String? filePath;
+  final bool isSubmitted;
+  final int? grade;
+
+  Assignment({
+    required this.id,
+    required this.topicId,
+    required this.title,
+    required this.description,
+    required this.maxScore,
+    this.deadline,
+    this.filePath,
+    this.isSubmitted = false,
+    this.grade,
+  });
+
+  factory Assignment.fromJson(Map<String, dynamic> json) {
+    return Assignment(
+      id: json['id'],
+      topicId: json['topicId'],
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      maxScore: json['maxScore'] ?? 0,
+      deadline: json['deadline'] != null ? DateTime.parse(json['deadline']) : null,
+      filePath: json['filePath'],
+      isSubmitted: json['isSubmitted'] ?? false,
+      grade: json['grade'],
+    );
+  }
+}
+
+class Submission {
+  final int id;
+  final String assignmentTitle;
+  final String studentName;
+  final String? studentComment;
+  final String filePath;
+  final DateTime submittedAt;
+  final int? grade;
+  final String? feedback;
+
+  Submission({
+    required this.id,
+    required this.assignmentTitle,
+    required this.studentName,
+    this.studentComment,
+    required this.filePath,
+    required this.submittedAt,
+    this.grade,
+    this.feedback,
+  });
+
+  factory Submission.fromJson(Map<String, dynamic> json) {
+    return Submission(
+      id: json['id'],
+      assignmentTitle: json['assignment']?['title'] ?? 'Vazifa',
+      studentName: json['student']?['fullName'] ?? 'Talaba',
+      studentComment: json['studentComment'],
+      filePath: json['filePath'],
+      submittedAt: DateTime.parse(json['submittedAt'] ?? DateTime.now().toIso8601String()),
+      grade: json['grade'],
+      feedback: json['feedback'],
+    );
+  }
+}

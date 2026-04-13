@@ -1,0 +1,11 @@
+bin/
+obj/
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+.vscode/
+.vs/
+*.user
+build/
+.dart_tool/
