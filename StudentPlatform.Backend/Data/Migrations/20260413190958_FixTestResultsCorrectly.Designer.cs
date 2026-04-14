@@ -11,8 +11,8 @@ using StudentPlatform.Backend.Data;
 namespace StudentPlatform.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260413140854_AddTestResultsTable")]
-    partial class AddTestResultsTable
+    [Migration("20260413190958_FixTestResultsCorrectly")]
+    partial class FixTestResultsCorrectly
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

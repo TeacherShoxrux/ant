@@ -79,11 +79,20 @@ class _QuizScreenState extends State<QuizScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    final result = await _apiService.submitQuiz(widget.quiz.id, answers);
-    
-    if (mounted) {
-      Navigator.pop(context); // Close loading
-      _showResultDialog(result);
+    try {
+      final result = await _apiService.submitQuiz(widget.quiz.id, answers);
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        _showResultDialog(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Xatolik yuz berdi: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _isFinished = false); // Allow retry
+      }
     }
   }
 

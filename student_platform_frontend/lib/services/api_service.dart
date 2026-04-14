@@ -97,7 +97,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
-    return {'score': 0, 'totalQuestions': 0};
+    throw Exception(response.body);
   }
 
   Future<List<Assignment>> getAssignments(int topicId) async {

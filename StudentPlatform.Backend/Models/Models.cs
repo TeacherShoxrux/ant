@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 namespace StudentPlatform.Backend.Models;
 
 public class Role
@@ -69,7 +72,11 @@ public class TopicQuiz
 public class TestQuestion
 {
     public int Id { get; set; }
+    [ForeignKey("Quiz")]
     public int QuizId { get; set; }
+    [JsonIgnore]
+    public TopicQuiz? Quiz { get; set; }
+    
     public string Title { get; set; } = string.Empty;
     public string Question { get; set; } = string.Empty;
     public string? ImagePath { get; set; }
@@ -80,7 +87,11 @@ public class TestQuestion
 public class TestOption
 {
     public int Id { get; set; }
+    [ForeignKey("Question")]
     public int QuestionId { get; set; }
+    [JsonIgnore]
+    public TestQuestion? Question { get; set; }
+    
     public string OptionText { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
 }
