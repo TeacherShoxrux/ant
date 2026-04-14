@@ -30,7 +30,8 @@ public class TopicsController : ControllerBase
                 Id = t.Id,
                 SubjectId = t.SubjectId,
                 Title = t.Title,
-                Content = t.Content
+                Content = t.Content,
+                IsDisabled = t.IsDisabled
             })
             .ToListAsync();
         return Ok(topics);
@@ -62,11 +63,38 @@ public class TopicsController : ControllerBase
             Title = topicDto.Title,
             Content = topicDto.Content
         };
-
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetTopic), new { id = topic.Id }, topic);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateTopic(int id, UpdateTopicDto updateDto)
+    {
+        var topic = await _context.Topics.FindAsync(id);
+        if (topic == null) return NotFound();
+
+        topic.Title = updateDto.Title;
+        topic.Content = updateDto.Content;
+        topic.IsDisabled = updateDto.IsDisabled;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/toggle-status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ToggleTopicStatus(int id)
+    {
+        var topic = await _context.Topics.FindAsync(id);
+        if (topic == null) return NotFound();
+
+        topic.IsDisabled = !topic.IsDisabled;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { topic.Id, topic.IsDisabled });
     }
 
     [HttpPost("{topicId}/videos")]

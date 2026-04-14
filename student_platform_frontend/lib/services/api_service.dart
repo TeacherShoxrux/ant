@@ -34,6 +34,27 @@ class ApiService {
       await prefs.setString('token', authResponse.token);
       await prefs.setString('role', authResponse.role);
       await prefs.setString('fullName', authResponse.fullName);
+      await prefs.setString('username', authResponse.username);
+      return authResponse;
+    }
+    return null;
+  }
+
+  Future<AuthResponse?> faceLogin(Uint8List imageBytes, String fileName) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/face-login'));
+    request.files.add(http.MultipartFile.fromBytes('faceImage', imageBytes, filename: fileName));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final authResponse = AuthResponse.fromJson(data);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', authResponse.token);
+      await prefs.setString('role', authResponse.role);
+      await prefs.setString('fullName', authResponse.fullName);
+      await prefs.setString('username', authResponse.username);
       return authResponse;
     }
     return null;
@@ -134,6 +155,35 @@ class ApiService {
     return response.statusCode == 201;
   }
 
+  Future<bool> updateSubject(int id, String name, String description, bool isDisabled) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/subjects/$id'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'isDisabled': isDisabled,
+      }),
+    );
+    return response.statusCode == 204;
+  }
+
+  Future<bool> toggleSubjectStatus(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/subjects/$id/toggle-status'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> deleteSubject(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/subjects/$id'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 204;
+  }
+
   Future<bool> createTopic(int subjectId, String title, String content) async {
     final response = await http.post(
       Uri.parse('$baseUrl/topics'),
@@ -145,6 +195,35 @@ class ApiService {
       }),
     );
     return response.statusCode == 201;
+  }
+
+  Future<bool> updateTopic(int topicId, String title, String content, bool isDisabled) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/topics/$topicId'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'title': title,
+        'content': content,
+        'isDisabled': isDisabled
+      }),
+    );
+    return response.statusCode == 204;
+  }
+
+  Future<bool> toggleTopicStatus(int topicId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/topics/$topicId/toggle-status'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> deleteTopic(int topicId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/topics/$topicId'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 204;
   }
 
   Future<bool> addTopicVideo(int topicId, String title, String youtubeUrl) async {
@@ -325,5 +404,147 @@ class ApiService {
       return data.map((q) => TestQuestion.fromJson(q)).toList();
     }
     return [];
+  }
+
+  Future<List<QuizResult>> getQuizResults(int quizId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/quizzes/$quizId/results'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.map((r) => QuizResult.fromJson(r)).toList();
+    }
+    return [];
+  }
+
+  // Dashboard & Misc
+  Future<Map<String, dynamic>> getStats() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/stats'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
+  Future<List<Map<String, dynamic>>> getStudents() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/students'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getSubjectGrades(int subjectId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/grades/$subjectId'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getGroups() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/groups'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> createGroup(String name) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/dashboard/groups'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
+  }
+
+  Future<bool> createStudent({
+    required String fullName,
+    String? patronymic,
+    required String username,
+    required String password,
+    String? phoneNumber,
+    int? groupId,
+    Uint8List? imageBytes,
+    String? imageName,
+  }) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/dashboard/students'));
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['fullName'] = fullName;
+    if (patronymic != null) request.fields['patronymic'] = patronymic;
+    request.fields['username'] = username;
+    request.fields['password'] = password;
+    if (phoneNumber != null) request.fields['phoneNumber'] = phoneNumber;
+    if (groupId != null) request.fields['groupId'] = groupId.toString();
+
+    if (imageBytes != null && imageName != null) {
+      request.files.add(http.MultipartFile.fromBytes('faceImage', imageBytes, filename: imageName));
+    }
+
+    final response = await request.send();
+    return response.statusCode == 200;
+  }
+
+  Future<bool> updateStudent({
+    required int id,
+    required String fullName,
+    String? patronymic,
+    required String username,
+    String? phoneNumber,
+    int? groupId,
+    Uint8List? imageBytes,
+    String? imageName,
+  }) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('PUT', Uri.parse('$baseUrl/dashboard/students/$id'));
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['fullName'] = fullName;
+    if (patronymic != null) request.fields['patronymic'] = patronymic;
+    request.fields['username'] = username;
+    if (phoneNumber != null) request.fields['phoneNumber'] = phoneNumber;
+    if (groupId != null) request.fields['groupId'] = groupId.toString();
+
+    if (imageBytes != null && imageName != null) {
+      request.files.add(http.MultipartFile.fromBytes('faceImage', imageBytes, filename: imageName));
+    }
+
+    final response = await request.send();
+    return response.statusCode == 200;
+  }
+
+  Future<bool> toggleStudentStatus(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/dashboard/students/$id/toggle-status'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> deleteStudent(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/dashboard/students/$id'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 204;
   }
 }

@@ -2,11 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../logic/auth/auth_cubit.dart';
+import '../logic/auth/auth_state.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
 import 'quiz_screen.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -59,22 +60,27 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       builder: (context) => Dialog(
         backgroundColor: Colors.black,
         insetPadding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppBar(
-              title: Text(video.title, style: const TextStyle(color: Colors.white)),
-              backgroundColor: Colors.transparent,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: Text(video.title, style: const TextStyle(color: Colors.white)),
+                backgroundColor: Colors.transparent,
+                leading: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
-            ),
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: YoutubePlayer(controller: controller),
-            ),
-          ],
+              Flexible(
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: YoutubePlayer(controller: controller),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ).then((_) => controller.close());
@@ -202,22 +208,41 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.topic.title)),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text(widget.topic.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1E3A8A),
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: _isLoadingContent
           ? const Center(child: CircularProgressIndicator())
           : DefaultTabController(
               length: 3,
               child: Column(
                 children: [
-                  const TabBar(
-                    labelColor: Colors.indigo,
-                    unselectedLabelColor: Colors.grey,
-                    tabs: [
-                      Tab(text: 'Dars matni va Media', icon: Icon(Icons.menu_book)),
-                      Tab(text: 'Test', icon: Icon(Icons.quiz)),
-                      Tab(text: 'Vazifa', icon: Icon(Icons.upload_file)),
-                    ],
-                  ),
+                   Container(
+                     color: Colors.white,
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: Container(
+                       decoration: const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Colors.black12, width: 1.0)),
+                       ),
+                       child: const TabBar(
+                         indicatorColor: Color(0xFF1E3A8A),
+                         indicatorWeight: 3,
+                         labelColor: Color(0xFF1E3A8A),
+                         unselectedLabelColor: Colors.grey,
+                         labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                         tabs: [
+                           Tab(text: 'Dars matni va Media', icon: Icon(Icons.menu_book)),
+                           Tab(text: 'Nazorat Testi', icon: Icon(Icons.quiz)),
+                           Tab(text: 'Topshiriq (Vazifa)', icon: Icon(Icons.upload_file)),
+                         ],
+                       ),
+                     ),
+                   ),
                   Expanded(
                     child: TabBarView(
                       children: [
@@ -234,7 +259,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   Widget _buildMainContent() {
-    final auth = context.read<AuthProvider>();
+    final authState = context.read<AuthCubit>().state;
+    final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
     final docs = _fullTopic?.documents ?? [];
     final videos = _fullTopic?.videos ?? [];
 
@@ -256,7 +282,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Video darslar', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  if (auth.isAdmin)
+                  if (isAdmin)
                     TextButton.icon(
                       onPressed: _showAddVideoDialog,
                       icon: const Icon(Icons.add),
@@ -313,7 +339,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Fayllar (PDF)', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  if (auth.isAdmin)
+                  if (isAdmin)
                     TextButton.icon(
                       onPressed: _showAddDocumentDialog,
                       icon: const Icon(Icons.add),
@@ -491,7 +517,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   Widget _buildTestSection() {
     if (_isLoadingContent) return const Center(child: CircularProgressIndicator());
-    final auth = context.read<AuthProvider>();
+    final authState = context.read<AuthCubit>().state;
+    final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
     final quizzes = _quizzes ?? [];
 
     return Center(
@@ -504,7 +531,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Testlar ro\'yxati', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                if (auth.isAdmin)
+                if (isAdmin)
                   ElevatedButton.icon(
                     onPressed: _showAddQuizDialog,
                     icon: const Icon(Icons.add_task),
@@ -578,12 +605,18 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                           label: const Text('Test savollarni ko\'rish'),
                                           style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.indigo)),
                                         ),
-                                        if (auth.isAdmin) ...[
+                                        if (isAdmin) ...[
                                           const SizedBox(width: 8),
                                           IconButton(
                                             onPressed: () => _showAddQuestionDialog(q.id),
                                             icon: const Icon(Icons.add_circle, color: Colors.green, size: 30),
                                             tooltip: 'Savol qo\'shish',
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            onPressed: () => _showQuizResultsDialog(q),
+                                            icon: const Icon(Icons.analytics, color: Colors.deepPurple, size: 30),
+                                            tooltip: 'Natijalarni ko\'rish',
                                           ),
                                         ]
                                       ],
@@ -600,6 +633,94 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuizResultsDialog(TopicQuiz quiz) async {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800, maxHeight: 700),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: FutureBuilder<List<QuizResult>>(
+              future: _apiService.getQuizResults(quiz.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
+                }
+                if (snapshot.hasError) {
+                  return SizedBox(height: 300, child: Center(child: Text('Xatolik: ${snapshot.error}')));
+                }
+                final results = snapshot.data ?? [];
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(quiz.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                            const Text('Test natijalari va talabalar ro\'yxati', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                          ],
+                        ),
+                        IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                      ],
+                    ),
+                    const Divider(height: 48),
+                    if (results.isEmpty)
+                      const Expanded(child: Center(child: Text('Hozircha natijalar mavjud emas.')))
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: results.length,
+                          itemBuilder: (context, index) {
+                            final r = results[index];
+                             // Calculate percentage color
+                             Color scoreColor = Colors.red;
+                             if (r.score / r.totalQuestions >= 0.8) scoreColor = Colors.green;
+                             else if (r.score / r.totalQuestions >= 0.5) scoreColor = Colors.orange;
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.indigo.shade50,
+                                  child: Text(r.studentName[0].toUpperCase(), style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+                                ),
+                                title: Text(r.studentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(r.takenAt.toString().split('.')[0].replaceAll('T', ' '), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text('${r.score} / ${r.totalQuestions}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: scoreColor)),
+                                    Text('${(r.score / r.totalQuestions * 100).toStringAsFixed(0)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scoreColor.withOpacity(0.8))),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -1138,7 +1259,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   Widget _buildAssignmentSection() {
     if (_isLoadingContent) return const Center(child: CircularProgressIndicator());
-    final auth = context.read<AuthProvider>();
+    final authState = context.read<AuthCubit>().state;
+    final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
     final assignments = _assignments ?? [];
 
     return Center(
@@ -1151,7 +1273,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Mustaqil ishlar ro\'yxati', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                if (auth.isAdmin)
+                if (isAdmin)
                    Row(
                      children: [
                        ElevatedButton.icon(

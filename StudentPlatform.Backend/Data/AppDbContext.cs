@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Assignment> Assignments { get; set; }
     public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
     public DbSet<TestResult> TestResults { get; set; }
+    public DbSet<Group> Groups { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

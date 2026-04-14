@@ -25,14 +25,21 @@ class Subject {
   final int id;
   final String name;
   final String description;
+  final bool isDisabled;
 
-  Subject({required this.id, required this.name, required this.description});
+  Subject({
+    required this.id, 
+    required this.name, 
+    required this.description,
+    this.isDisabled = false,
+  });
 
   factory Subject.fromJson(Map<String, dynamic> json) {
     return Subject(
       id: json['id'],
       name: json['name'],
       description: json['description'],
+      isDisabled: json['isDisabled'] ?? false,
     );
   }
 }
@@ -42,6 +49,7 @@ class Topic {
   final int subjectId;
   final String title;
   final String content;
+  final bool isDisabled;
   final List<TopicQuiz> quizzes;
   final List<Assignment> assignments;
   final List<TopicDocument> documents;
@@ -52,6 +60,7 @@ class Topic {
     required this.subjectId,
     required this.title,
     required this.content,
+    this.isDisabled = false,
     this.quizzes = const [],
     this.assignments = const [],
     this.documents = const [],
@@ -64,6 +73,7 @@ class Topic {
       subjectId: json['subjectId'],
       title: json['title'] ?? '',
       content: json['content'] ?? '',
+      isDisabled: json['isDisabled'] ?? false,
       quizzes: json['quizzes'] != null
           ? (json['quizzes'] as List).map((i) => TopicQuiz.fromJson(i)).toList()
           : [],
@@ -288,6 +298,29 @@ class Submission {
       submittedAt: DateTime.parse(json['submittedAt'] ?? DateTime.now().toIso8601String()),
       grade: json['grade'],
       feedback: json['feedback'],
+    );
+  }
+}
+
+class QuizResult {
+  final String studentName;
+  final int score;
+  final int totalQuestions;
+  final DateTime takenAt;
+
+  QuizResult({
+    required this.studentName,
+    required this.score,
+    required this.totalQuestions,
+    required this.takenAt,
+  });
+
+  factory QuizResult.fromJson(Map<String, dynamic> json) {
+    return QuizResult(
+      studentName: json['studentName'] ?? 'Noma\'lum',
+      score: json['score'] ?? 0,
+      totalQuestions: json['totalQuestions'] ?? 0,
+      takenAt: DateTime.parse(json['takenAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

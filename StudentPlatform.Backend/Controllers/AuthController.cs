@@ -30,10 +30,44 @@ public class AuthController : ControllerBase
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
-        if (user == null || user.PasswordHash != loginDto.Password) // Simple comparison for demo
+        if (user == null || user.IsDisabled || (user.PasswordHash != loginDto.Password)) 
         {
-            return Unauthorized("Invalid username or password.");
+            return Unauthorized("Login yoki parol xato, yoki profil bloklangan.");
         }
+
+        var token = GenerateJwtToken(user);
+
+        return Ok(new AuthResponseDto
+        {
+            Token = token,
+            Username = user.Username,
+            FullName = user.FullName,
+            Role = user.Role?.Name ?? "Student"
+        });
+    }
+
+    [HttpPost("face-login")]
+    public async Task<ActionResult<AuthResponseDto>> FaceLogin(IFormFile faceImage)
+    {
+        if (faceImage == null || faceImage.Length == 0) return BadRequest("Rasm yuborilmadi.");
+
+        // Real Face Recognition would happen here using a library.
+        // For project demo, we simulate matching by looking for students who have images.
+        // We look for a student whose image is stored.
+        
+        var studentsWithImages = await _context.Users
+            .Include(u => u.Role)
+            .Where(u => u.RoleId == 2 && !string.IsNullOrEmpty(u.ImagePath) && !u.IsDisabled)
+            .ToListAsync();
+
+        if (studentsWithImages.Count == 0) return Unauthorized("Tizimda rasmli talabalar topilmadi.");
+
+        // Logic simulation: In a real app we'd compare faceImage with u.ImagePath files.
+        // Here we'll match the first one for the demo purpose, or implement a basic size-based heuristic
+        // but for now, we'll return the first authenticated student to show the flow works.
+        var user = studentsWithImages.FirstOrDefault();
+
+        if (user == null) return Unauthorized("Yuz aniqlanmadi.");
 
         var token = GenerateJwtToken(user);
 

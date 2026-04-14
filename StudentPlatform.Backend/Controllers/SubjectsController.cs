@@ -26,7 +26,8 @@ public class SubjectsController : ControllerBase
             {
                 Id = s.Id,
                 Name = s.Name,
-                Description = s.Description
+                Description = s.Description,
+                IsDisabled = s.IsDisabled
             })
             .ToListAsync();
         return Ok(subjects);
@@ -57,6 +58,34 @@ public class SubjectsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateSubject(int id, UpdateSubjectDto updateDto)
+    {
+        var subject = await _context.Subjects.FindAsync(id);
+        if (subject == null) return NotFound();
+
+        subject.Name = updateDto.Name;
+        subject.Description = updateDto.Description;
+        subject.IsDisabled = updateDto.IsDisabled;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/toggle-status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ToggleSubjectStatus(int id)
+    {
+        var subject = await _context.Subjects.FindAsync(id);
+        if (subject == null) return NotFound();
+
+        subject.IsDisabled = !subject.IsDisabled;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { subject.Id, subject.IsDisabled });
     }
 
     [HttpDelete("{id}")]

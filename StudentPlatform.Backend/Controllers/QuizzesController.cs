@@ -180,6 +180,23 @@ public class QuizzesController : ControllerBase
             .ToListAsync();
         return Ok(questions);
     }
+
+    [HttpGet("{quizId}/results")]
+    public async Task<ActionResult> GetQuizResults(int quizId)
+    {
+        var results = await _context.TestResults
+            .Where(r => r.QuizId == quizId)
+            .Include(r => r.Student)
+            .Select(r => new {
+                StudentName = r.Student != null ? r.Student.FullName : "Nomalum",
+                Score = r.Score,
+                TotalQuestions = r.TotalQuestions,
+                TakenAt = r.TakenAt
+            })
+            .OrderByDescending(r => r.TakenAt)
+            .ToListAsync();
+        return Ok(results);
+    }
 }
 
 public class QuizSubmissionDto

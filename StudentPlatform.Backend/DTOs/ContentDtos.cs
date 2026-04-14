@@ -5,6 +5,14 @@ public class SubjectDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public bool IsDisabled { get; set; } = false;
+}
+
+public class UpdateSubjectDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public bool IsDisabled { get; set; } = false;
 }
 
 public class TopicDto
@@ -13,6 +21,14 @@ public class TopicDto
     public int SubjectId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public bool IsDisabled { get; set; } = false;
+}
+
+public class UpdateTopicDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public bool IsDisabled { get; set; } = false;
 }
 
 public class TestQuestionDto

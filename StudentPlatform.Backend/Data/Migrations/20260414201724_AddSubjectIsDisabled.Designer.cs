@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentPlatform.Backend.Data;
 
@@ -10,9 +11,11 @@ using StudentPlatform.Backend.Data;
 namespace StudentPlatform.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414201724_AddSubjectIsDisabled")]
+    partial class AddSubjectIsDisabled
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.25");
@@ -356,9 +359,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Property<string>("ImagePath")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsDisabled")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -389,7 +389,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         {
                             Id = 1,
                             FullName = "System Administrator",
-                            IsDisabled = false,
                             PasswordHash = "admin123",
                             RoleId = 1,
                             Username = "admin"

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../models/models.dart';
-import 'subject_details_screen.dart';
-import 'admin_dashboard.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../logic/auth/auth_cubit.dart';
+import '../../logic/auth/auth_state.dart';
+import '../../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,123 +15,163 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
-  List<Subject>? _subjects;
+  Map<String, dynamic>? _stats;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchSubjects();
+    _loadData();
   }
 
-  Future<void> _fetchSubjects() async {
-    final subjects = await _apiService.getSubjects();
-    setState(() {
-      _subjects = subjects;
-      _isLoading = false;
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final stats = await _apiService.getStats();
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProvider>();
+    var width = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mening Fanlarim', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          if (auth.isAdmin)
-            TextButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboard())),
-              icon: const Icon(Icons.admin_panel_settings),
-              label: const Text('Admin'),
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Center(child: Text(auth.fullName ?? '')),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => auth.logout(),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.grey[50],
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _subjects == null || _subjects!.isEmpty
-              ? const Center(child: Text('Hozircha fanlar mavjud emas.'))
-              : Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 400,
-                      childAspectRatio: 3 / 2,
-                      crossAxisSpacing: 20,
-                      mainAxisSpacing: 20,
-                    ),
-                    itemCount: _subjects!.length,
-                    itemBuilder: (context, index) {
-                      final subject = _subjects![index];
-                      return SubjectCard(subject: subject);
-                    },
-                  ),
-                ),
-    );
-  }
-}
-
-class SubjectCard extends StatelessWidget {
-  final Subject subject;
-  const SubjectCard({required this.subject, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => SubjectDetailsScreen(subject: subject)),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.book, color: Colors.indigo, size: 32),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                subject.name,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subject.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              const Spacer(),
-              Row(
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Darslarni ko\'rish', style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward, color: Colors.indigo, size: 16),
+                  const Text(
+                    'Asosiy panel',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
+                  
+                  const SizedBox(height: 8),
+                  
+                  Text(
+                    'Bugungi ta\'lim jarayoni bo\'yicha qisqacha ma\'lumotlar',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ).animate().fadeIn(delay: 200.ms),
+                  
+                  const SizedBox(height: 32),
+                  
+                  GridView.count(
+                    crossAxisCount: width > 1200 ? 4 : (width > 800 ? 2 : 1),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 24,
+                    crossAxisSpacing: 24,
+                    childAspectRatio: width > 800 ? 2.5 : 2.2,
+                    children: [
+                      _buildStatCard('Fanlar', _stats?['totalSubjects']?.toString() ?? '0', Icons.book_outlined, Colors.blue),
+                      _buildStatCard('Mavzular', _stats?['totalTopics']?.toString() ?? '0', Icons.topic_outlined, Colors.orange),
+                      _buildStatCard('Testlar', _stats?['totalQuizzes']?.toString() ?? '0', Icons.quiz_outlined, Colors.purple),
+                      _buildStatCard('Topshiriqlar', _stats?['totalAssignments']?.toString() ?? '0', Icons.assignment_outlined, Colors.green),
+                      if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
+                        _buildStatCard('Talabalar', _stats?['totalStudents']?.toString() ?? '0', Icons.group_outlined, Colors.red),
+                    ].animate(interval: 100.ms).fadeIn(duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                  ),
+                  
+                  const SizedBox(height: 48),
+                  
+                  const Text(
+                    'Tezkor Harakatlar',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ).animate().fadeIn(delay: 400.ms),
+                  
+                  const SizedBox(height: 24),
+                  
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      _buildQuickAction(context, 'Mening fanlarim', Icons.menu_book, '/subjects'),
+                      _buildQuickAction(context, 'O\'zlashtirish', Icons.bar_chart, '/grades'),
+                      _buildQuickAction(context, 'Profil', Icons.person, '/profile'),
+                    ].animate(interval: 100.ms).fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                  )
                 ],
               ),
-            ],
-          ),
+            ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(BuildContext context, String title, IconData icon, String path) {
+    return InkWell(
+      onTap: () => context.go(path),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF1E3A8A)),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+            ),
+          ],
         ),
       ),
     );
