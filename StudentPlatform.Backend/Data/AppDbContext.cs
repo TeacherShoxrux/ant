@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<User> Users { get; set; }
+    public DbSet<FaceRecord> FaceRecords { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<Topic> Topics { get; set; }
@@ -36,5 +37,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>().HasData(
             new User { Id = 1, Username = "admin", PasswordHash = "admin123", FullName = "System Administrator", RoleId = 1 }
         );
+        modelBuilder.Entity<FaceRecord>().HasOne<User>()
+            .WithOne(u => u.FaceRecord)
+            .HasForeignKey<FaceRecord>(f => f.UserId);
     }
 }

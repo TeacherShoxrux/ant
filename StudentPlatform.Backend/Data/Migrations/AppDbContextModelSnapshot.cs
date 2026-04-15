@@ -15,7 +15,7 @@ namespace StudentPlatform.Backend.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.25");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Assignment", b =>
                 {
@@ -85,6 +85,35 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("AssignmentSubmissions");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.FaceRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Image")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UserId1")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId1");
+
+                    b.ToTable("FaceRecords");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Group", b =>
@@ -346,6 +375,9 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("FaceRecordId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -388,6 +420,7 @@ namespace StudentPlatform.Backend.Data.Migrations
                         new
                         {
                             Id = 1,
+                            FaceRecordId = 0,
                             FullName = "System Administrator",
                             IsDisabled = false,
                             PasswordHash = "admin123",
@@ -424,6 +457,21 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Navigation("Assignment");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.FaceRecord", b =>
+                {
+                    b.HasOne("StudentPlatform.Backend.Models.User", null)
+                        .WithOne("FaceRecord")
+                        .HasForeignKey("StudentPlatform.Backend.Models.FaceRecord", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudentPlatform.Backend.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId1");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.TestOption", b =>
@@ -550,6 +598,11 @@ namespace StudentPlatform.Backend.Data.Migrations
             modelBuilder.Entity("StudentPlatform.Backend.Models.TopicQuiz", b =>
                 {
                     b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.User", b =>
+                {
+                    b.Navigation("FaceRecord");
                 });
 #pragma warning restore 612, 618
         }

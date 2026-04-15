@@ -24,7 +24,8 @@ public class User
     public string? Patronymic { get; set; } // Sharifi
     public string? PhoneNumber { get; set; }
     public string? ImagePath { get; set; }
-    
+    public int FaceRecordId { get; set; }
+    public virtual FaceRecord? FaceRecord { get; set; }
     public int? GroupId { get; set; }
     public Group? Group { get; set; }
     

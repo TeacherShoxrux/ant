@@ -42,7 +42,7 @@ class ApiService {
 
   Future<AuthResponse?> faceLogin(Uint8List imageBytes, String fileName) async {
     var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/face-login'));
-    request.files.add(http.MultipartFile.fromBytes('faceImage', imageBytes, filename: fileName));
+    request.files.add(http.MultipartFile.fromBytes('faceImage', imageBytes, filename: "fileName"));
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);

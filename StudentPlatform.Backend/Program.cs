@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StudentPlatform.Backend.Data;
+using StudentPlatform.Backend.Embedding;
+using StudentPlatform.Backend.Embedding.Cached;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +16,8 @@ builder.Services.AddSwaggerGen();
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IFaceEmbeddingCache, FaceEmbeddingCache>();
+builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
 
 // CORS
 builder.Services.AddCors(options =>

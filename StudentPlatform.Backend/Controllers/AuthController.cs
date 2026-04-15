@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StudentPlatform.Backend.Data;
 using StudentPlatform.Backend.DTOs;
+using StudentPlatform.Backend.Embedding;
+using StudentPlatform.Backend.Embedding.Cached;
 using StudentPlatform.Backend.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -16,11 +18,15 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IEmbeddingService _embeddingService;
+    private readonly IFaceEmbeddingCache _faceEmbeddingCache;
 
-    public AuthController(AppDbContext context, IConfiguration configuration)
+    public AuthController(AppDbContext context, IConfiguration configuration, IEmbeddingService embeddingService, IFaceEmbeddingCache faceEmbeddingCache)
     {
         _context = context;
         _configuration = configuration;
+        _embeddingService = embeddingService;
+        _faceEmbeddingCache = faceEmbeddingCache;
     }
 
     [HttpPost("login")]
@@ -50,22 +56,38 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> FaceLogin(IFormFile faceImage)
     {
         if (faceImage == null || faceImage.Length == 0) return BadRequest("Rasm yuborilmadi.");
-
+        var fileName = Guid.NewGuid() + faceImage.FileName;
+        var imagePath = Path.Combine("wwwroot/temp/uploads", fileName);
+         if (!Directory.Exists("wwwroot/temp/uploads"))
+            {
+                Directory.CreateDirectory("wwwroot/temp/uploads");
+            }
+         using (var stream = new FileStream(imagePath, FileMode.Create))
+            {
+                await faceImage.CopyToAsync(stream);
+            }
+            var embedding = _embeddingService.GenerateEmbedding(imagePath);
+            if (embedding == null)
+                return BadRequest("Yuzni aniqlashda xatolik yuz berdi.");
+            var matchedStudentId = _embeddingService.GetMatchedStudentId(embedding);
+            if (matchedStudentId == null)
+                return BadRequest("Yuz bazada topilmadi.");
         // Real Face Recognition would happen here using a library.
         // For project demo, we simulate matching by looking for students who have images.
         // We look for a student whose image is stored.
         
         var studentsWithImages = await _context.Users
             .Include(u => u.Role)
-            .Where(u => u.RoleId == 2 && !string.IsNullOrEmpty(u.ImagePath) && !u.IsDisabled)
+            .Where(u =>  u.RoleId == 2 && !string.IsNullOrEmpty(u.ImagePath) && !u.IsDisabled)
             .ToListAsync();
 
         if (studentsWithImages.Count == 0) return Unauthorized("Tizimda rasmli talabalar topilmadi.");
+        
 
         // Logic simulation: In a real app we'd compare faceImage with u.ImagePath files.
         // Here we'll match the first one for the demo purpose, or implement a basic size-based heuristic
         // but for now, we'll return the first authenticated student to show the flow works.
-        var user = studentsWithImages.FirstOrDefault();
+        var user = studentsWithImages.FirstOrDefault(u => u.Id == matchedStudentId);
 
         if (user == null) return Unauthorized("Yuz aniqlanmadi.");
 

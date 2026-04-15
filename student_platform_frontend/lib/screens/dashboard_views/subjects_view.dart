@@ -25,7 +25,67 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     super.initState();
     _fetchSubjects();
   }
+// lib/screens/dashboard_views/subjects_view.dart fayliga quyidagi metodni qo'shing
 
+  void _addSubjectDialog() {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Yangi fan qo\'shish'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Fan nomi',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Ta\'rif (qisqacha)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Bekor qilish'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (nameController.text.isEmpty) return;
+              final success = await _apiService.createSubject(
+                nameController.text,
+                descController.text,
+              );
+              if (success && mounted) {
+                Navigator.pop(context);
+                _fetchSubjects();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Fan muvaffaqiyatli qo\'shildi')),
+                );
+              }
+            },
+            child: const Text('Qo\'shish'),
+          ),
+        ],
+      ),
+    );
+  }
   Future<void> _fetchSubjects() async {
     final subjects = await _apiService.getSubjects();
     if (mounted) {
@@ -113,20 +173,43 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       return const Center(child: Text('Hozircha fanlar mavjud emas.'));
     }
 
+    // build metodining boshida:
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Mening Fanlarim',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-          ).animate().fadeIn().slideY(begin: 0.2),
-          const SizedBox(height: 8),
-          Text(
-            'Barcha o\'quv fanlari ro\'yxati va materiallar',
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-          ).animate().fadeIn(delay: 100.ms),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Mening Fanlarim',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                  ).animate().fadeIn().slideY(begin: 0.2),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Barcha o\'quv fanlari ro\'yxati va materiallar',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ).animate().fadeIn(delay: 100.ms),
+                ],
+              ),
+              if (isAdmin)
+                ElevatedButton.icon(
+                  onPressed: _addSubjectDialog,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Fan qo\'shish'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ).animate().fadeIn(delay: 200.ms).scale(),
+            ],
+          ),
           const SizedBox(height: 32),
           
           Expanded(

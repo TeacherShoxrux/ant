@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudentPlatform.Backend.Data;
+using StudentPlatform.Backend.Embedding;
+using StudentPlatform.Backend.Embedding.Cached;
 using StudentPlatform.Backend.Models;
 using System.Security.Claims;
 
@@ -13,11 +15,14 @@ namespace StudentPlatform.Backend.Controllers;
 public class DashboardController : ControllerBase
 {
     private readonly AppDbContext _context;
-
-    public DashboardController(AppDbContext context)
+    private readonly IEmbeddingService _embeddingService;
+    private readonly IFaceEmbeddingCache _faceEmbeddingCache;
+    public DashboardController(AppDbContext context, IEmbeddingService embeddingService, IFaceEmbeddingCache faceEmbeddingCache)
     {
         _context = context;
-        
+        _embeddingService = embeddingService;
+        _faceEmbeddingCache = faceEmbeddingCache;
+
         // Manual schema synchronization for SQLite (Fix for 'no such table: Groups')
         try 
         {
@@ -138,9 +143,18 @@ public class DashboardController : ControllerBase
         var filePath = Path.Combine(uploadsFolder, fileName);
         using (var stream = new FileStream(filePath, FileMode.Create)) await faceImage.CopyToAsync(stream);
         var imagePath = $"/uploads/students/{fileName}";
+         var embedding = _embeddingService.GenerateEmbedding(filePath);
+        if (embedding == null) return BadRequest("Yuzdan embedding hosil qilishda xatolik yuz berdi. Iltimos, aniq va sifatli rasm yuklang.");
+         FaceRecord faceRecord = new FaceRecord()
+        {
+            Embedding = System.Text.Json.JsonSerializer.Serialize(embedding),
+            Image = filePath,
+        };
+        
 
         var student = new User
         {
+            FaceRecord = faceRecord,
             FullName = fullName,
             Patronymic = patronymic,
             Username = username,
@@ -148,11 +162,13 @@ public class DashboardController : ControllerBase
             PhoneNumber = phoneNumber,
             GroupId = groupId,
             ImagePath = imagePath,
-            RoleId = 2 // Student
+            RoleId = 2 
+            
         };
 
         _context.Users.Add(student);
         await _context.SaveChangesAsync();
+
         return Ok(student);
     }
 
