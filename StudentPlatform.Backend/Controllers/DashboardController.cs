@@ -229,6 +229,30 @@ public class DashboardController : ControllerBase
         return Ok(new { message = "Rol muvaffaqiyatli o'zgartirildi." });
     }
 
+    [HttpPost("admins/{id}/image")]
+    [Authorize(Roles = "Admin,Moderator")]
+    public async Task<ActionResult> UpdateAdminImage(int id, [FromForm] IFormFile image)
+    {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (currentUserId != 1) return Forbid("Sizda bu huquq yo'q.");
+
+        var admin = await _context.Users.FindAsync(id);
+        if (admin == null || (admin.RoleId != 1 && admin.RoleId != 3)) return NotFound("Admin topilmadi.");
+
+        if (image != null && image.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "admins");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+            var fileName = $"{Guid.NewGuid()}_{image.FileName}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create)) await image.CopyToAsync(stream);
+            admin.ImagePath = $"/uploads/admins/{fileName}";
+            await _context.SaveChangesAsync();
+            return Ok(new { imagePath = admin.ImagePath });
+        }
+        return BadRequest("Rasm yuborilmadi.");
+    }
+
     [HttpGet("grades/{subjectId}")]
     public async Task<ActionResult> GetSubjectGrades(int subjectId)
     {
@@ -439,8 +463,11 @@ public class DashboardController : ControllerBase
 
     [HttpPost("students")]
     [Authorize(Roles = "Admin,Moderator")]
-    public async Task<ActionResult> CreateStudent([FromForm] string fullName, [FromForm] string? patronymic, [FromForm] string username, [FromForm] string password, [FromForm] string? phoneNumber, [FromForm] int? groupId, IFormFile? faceImage)
+    public async Task<ActionResult> CreateStudent([FromForm] string fullName, [FromForm] string? patronymic, [FromForm] string username, [FromForm] string password, [FromForm] string phoneNumber, [FromForm] int? groupId, IFormFile? faceImage)
     {
+        if (string.IsNullOrEmpty(phoneNumber)) return BadRequest("Telefon raqami majburiy!");
+        if (await _context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber)) return BadRequest("Ushbu telefon raqami allaqachon mavjud!");
+        
         if (groupId == null) return BadRequest("Guruhni tanlash majburiy!");
         if (faceImage == null || faceImage.Length == 0) return BadRequest("Talaba yuz rasmini yuklash majburiy!");
 
@@ -481,8 +508,10 @@ public class DashboardController : ControllerBase
 
     [HttpPut("students/{id}")]
     [Authorize(Roles = "Admin,Moderator")]
-    public async Task<ActionResult> UpdateStudent(int id, [FromForm] string fullName, [FromForm] string? patronymic, [FromForm] string username, [FromForm] string? phoneNumber, [FromForm] int? groupId, IFormFile? faceImage)
+    public async Task<ActionResult> UpdateStudent(int id, [FromForm] string fullName, [FromForm] string? patronymic, [FromForm] string username, [FromForm] string phoneNumber, [FromForm] int? groupId, IFormFile? faceImage)
     {
+        if (string.IsNullOrEmpty(phoneNumber)) return BadRequest("Telefon raqami majburiy!");
+        if (await _context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber && u.Id != id)) return BadRequest("Ushbu telefon raqami boshqa talaba tomonidan foydalanilmoqda!");
         var student = await _context.Users.FindAsync(id);
         if (student == null || student.RoleId != 2) return NotFound("Talaba topilmadi.");
 

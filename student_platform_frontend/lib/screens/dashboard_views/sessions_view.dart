@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/responsive_dialog.dart';
 import 'package:intl/intl.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class SessionsView extends StatefulWidget {
   const SessionsView({super.key});
@@ -87,9 +88,7 @@ class _SessionsViewState extends State<SessionsView> {
       });
     } catch (e) {
       if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xatolik: $e'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Xatolik: $e', isError: true);
       }
       setState(() => _isLoading = false);
     }
@@ -105,71 +104,89 @@ class _SessionsViewState extends State<SessionsView> {
     int totalPages = (_totalCount / _limit).ceil();
     if(totalPages < 1) totalPages = 1;
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Login Sessiyalari (Tarix)',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-          ),
-          const SizedBox(height: 24),
-          
-          // Filters
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 24.0;
+
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'F.I.O yoki IP orqali izlash...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              Text(
+                'Login Sessiyalari (Tarix)',
+                style: TextStyle(fontSize: isMobile ? 22 : 28, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A)),
+              ),
+              const SizedBox(height: 24),
+              
+              // Filters
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
+                children: [
+                  Expanded(
+                    flex: isMobile ? 0 : 2,
+                    child: SizedBox(
+                      width: isMobile ? double.infinity : null,
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'F.I.O yoki IP orqali izlash...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onSubmitted: (_) => _onSearch(),
+                      ),
+                    ),
                   ),
-                  onSubmitted: (_) => _onSearch(),
-                ),
+                  if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _selectDateRange,
+                          icon: const Icon(Icons.date_range),
+                          label: Text(
+                            _startDate != null && _endDate != null
+                                ? '${DateFormat('dd.MM.yyyy').format(_startDate!)} - ${DateFormat('dd.MM.yyyy').format(_endDate!)}'
+                                : isMobile ? 'Sana' : 'Sana oralig\'ini tanlash',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.all(18),
+                            side: const BorderSide(color: Color(0xFF1E3A8A)),
+                            foregroundColor: const Color(0xFF1E3A8A),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      if (_startDate != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _clearDates,
+                          icon: const Icon(Icons.clear, color: Colors.red),
+                          tooltip: 'Sanani tozalash',
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 16),
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: ElevatedButton.icon(
+                      onPressed: _onSearch,
+                      icon: const Icon(Icons.search),
+                      label: const Text('Izlash'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              OutlinedButton.icon(
-                onPressed: _selectDateRange,
-                icon: const Icon(Icons.date_range),
-                label: Text(
-                  _startDate != null && _endDate != null
-                      ? '${DateFormat('dd.MM.yyyy').format(_startDate!)} - ${DateFormat('dd.MM.yyyy').format(_endDate!)}'
-                      : 'Sana oralig\'ini tanlash',
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.all(18),
-                  side: const BorderSide(color: Color(0xFF1E3A8A)),
-                  foregroundColor: const Color(0xFF1E3A8A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              if (_startDate != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _clearDates,
-                  icon: const Icon(Icons.clear, color: Colors.red),
-                  tooltip: 'Sanani tozalash',
-                ),
-              ],
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: _onSearch,
-                icon: const Icon(Icons.search),
-                label: const Text('Izlash'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
           // Table
           Expanded(
@@ -339,8 +356,10 @@ class _SessionsViewState extends State<SessionsView> {
                 ),
               ],
             ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
+    },
+  );
+}
 }

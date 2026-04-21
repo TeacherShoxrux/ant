@@ -9,6 +9,7 @@ import '../../logic/auth/auth_state.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../widgets/responsive_dialog.dart';
 import 'package:uuid/uuid.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class AdminsScreen extends StatefulWidget {
   const AdminsScreen({super.key});
@@ -159,7 +160,7 @@ class _AdminsScreenState extends State<AdminsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameController.text.isEmpty || surnameController.text.isEmpty || phoneController.text.isEmpty || passController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Barcha maydonlarni to\'ldiring')));
+                      AppToast.show(context, 'Barcha maydonlarni to\'ldiring');
                       return;
                     }
                     
@@ -176,10 +177,10 @@ class _AdminsScreenState extends State<AdminsScreen> {
                     if (success && mounted) {
                       Navigator.pop(context);
                       _fetchAdmins();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin muvaffaqiyatli qo\'shildi')));
+                      AppToast.show(context, 'Admin muvaffaqiyatli qo\'shildi');
                     } else {
                       setDialogState(() => isSaving = false);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi.')));
+                      AppToast.show(context, 'Xatolik yuz berdi.');
                     }
                   },
                   child: const Text('Saqlash'),
@@ -243,7 +244,7 @@ class _AdminsScreenState extends State<AdminsScreen> {
 
   void _confirmDeleteAdmin(Map<String, dynamic> admin) {
     if (admin['id'] == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asosiy adminni o\'chirib bo\'lmaydi.')));
+      AppToast.show(context, 'Asosiy adminni o\'chirib bo\'lmaydi.');
       return;
     }
     showDialog(
@@ -312,10 +313,10 @@ class _AdminsScreenState extends State<AdminsScreen> {
                   final ok = await _apiService.resetAdminPassword(admin['id'], passController.text);
                   if (ok && mounted) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Parol muvaffaqiyatli yangilandi.')));
+                    AppToast.show(context, 'Parol muvaffaqiyatli yangilandi.');
                   } else {
                     setDialogState(() => isSaving = false);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi.')));
+                    AppToast.show(context, 'Xatolik yuz berdi.');
                   }
                 },
                 child: const Text('Saqlash'),
@@ -369,10 +370,10 @@ class _AdminsScreenState extends State<AdminsScreen> {
                   if (ok && mounted) {
                     Navigator.pop(ctx);
                     _fetchAdmins();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rol muvaffaqiyatli yangilandi!')));
+                    AppToast.show(context, 'Rol muvaffaqiyatli yangilandi!');
                   } else {
                     setDialogState(() => isSaving = false);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi.')));
+                    AppToast.show(context, 'Xatolik yuz berdi.');
                   }
                 },
                 child: const Text('Saqlash'),
@@ -384,40 +385,87 @@ class _AdminsScreenState extends State<AdminsScreen> {
     );
   }
 
+  Future<void> _pickAndUpdateAdminImage(Map<String, dynamic> admin) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (result != null && result.files.single.bytes != null) {
+      final bytes = result.files.single.bytes!;
+      final fileName = result.files.single.name;
+      
+      final newPath = await _apiService.updateAdminImage(admin['id'], bytes, fileName);
+      
+      if (newPath != null && mounted) {
+        _fetchAdmins();
+        AppToast.show(context, 'Admin rasmi muvaffaqiyatli yangilandi');
+      } else if (mounted) {
+        AppToast.show(context, 'Xatolik yuz berdi', isError: true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isSuperAdmin = _isSuperAdmin();
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 32.0;
+
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Adminlar ro\'yxati',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ).animate().fadeIn().slideY(begin: 0.2),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isLoading ? 'Yuklanmoqda...' : 'Jami: ${_admins?.length ?? 0} ta admin',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ).animate().fadeIn(delay: 100.ms),
-                ],
-              ),
-              if (isSuperAdmin)
-                ElevatedButton.icon(
-                  onPressed: _showAddAdminDialog,
-                  icon: const Icon(Icons.security),
-                  label: const Text('Admin qo\'shish'),
-                ).animate().fadeIn(delay: 200.ms).scale(),
-            ],
-          ),
-          const SizedBox(height: 24),
+              isMobile 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Adminlar ro\'yxati',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    ).animate().fadeIn().slideY(begin: 0.2),
+                    const SizedBox(height: 12),
+                    if (isSuperAdmin)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _showAddAdminDialog,
+                          icon: const Icon(Icons.security),
+                          label: const Text('Admin qo\'shish'),
+                        ),
+                      ).animate().fadeIn(delay: 200.ms).scale(),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Adminlar ro\'yxati',
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                        ).animate().fadeIn().slideY(begin: 0.2),
+                        const SizedBox(height: 8),
+                        Text(
+                          _isLoading ? 'Yuklanmoqda...' : 'Jami: ${_admins?.length ?? 0} ta admin',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ).animate().fadeIn(delay: 100.ms),
+                      ],
+                    ),
+                    if (isSuperAdmin)
+                      ElevatedButton.icon(
+                        onPressed: _showAddAdminDialog,
+                        icon: const Icon(Icons.security),
+                        label: const Text('Admin qo\'shish'),
+                      ).animate().fadeIn(delay: 200.ms).scale(),
+                  ],
+                ),
+              const SizedBox(height: 24),
           TextField(
             decoration: InputDecoration(
               hintText: 'Ism bo\'yicha qidirish...',
@@ -506,6 +554,8 @@ class _AdminsScreenState extends State<AdminsScreen> {
                               _showResetPasswordDialog(admin);
                             } else if (val == 'delete') {
                               _confirmDeleteAdmin(admin);
+                            } else if (val == 'image') {
+                              _pickAndUpdateAdminImage(admin);
                             }
                           },
                           itemBuilder: (ctx) => [
@@ -541,6 +591,14 @@ class _AdminsScreenState extends State<AdminsScreen> {
                                 Text('O\'chirish', style: TextStyle(color: Colors.red))
                               ])
                             ),
+                            const PopupMenuItem(
+                              value: 'image', 
+                              child: Row(children: [
+                                Icon(Icons.camera_alt, size: 18, color: Colors.indigo), 
+                                SizedBox(width: 8), 
+                                Text('Rasmni yangilash')
+                              ])
+                            ),
                           ],
                         ),
                       ),
@@ -549,8 +607,10 @@ class _AdminsScreenState extends State<AdminsScreen> {
                 },
               ),
             ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
+    },
+  );
+}
 }

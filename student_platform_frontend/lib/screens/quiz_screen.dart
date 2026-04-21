@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class QuizScreen extends StatefulWidget {
   final TopicQuiz quiz;
@@ -106,9 +107,7 @@ class _QuizScreenState extends State<QuizScreen> {
     } catch (e) {
       if (mounted) {
         Navigator.pop(context); // Close loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xatolik yuz berdi: $e'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Xatolik yuz berdi: $e', isError: true);
         setState(() => _isFinished = false);
       }
     }

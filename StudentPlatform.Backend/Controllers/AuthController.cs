@@ -33,14 +33,14 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto loginDto)
     {
-        var loginInput = loginDto.Username.Trim();
+        var phoneInput = loginDto.PhoneNumber.Trim();
         var user = await _context.Users
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == loginInput.ToLower() || u.PhoneNumber == loginInput);
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneInput || u.Username == phoneInput);
 
         if (user == null || user.IsDisabled || (user.PasswordHash.Trim() != loginDto.Password.Trim())) 
         {
-            return Unauthorized("Login yoki parol xato, yoki profil bloklangan.");
+            return Unauthorized("Telefon raqami yoki parol xato, yoki profil bloklangan.");
         }
 
         // Create Session Record
@@ -61,34 +61,29 @@ public class AuthController : ControllerBase
                     var country = jsonDoc.RootElement.GetProperty("country").GetString();
                     location = $"{city}, {country}";
                 }
-            }
-            catch { /* Ignore ip-api errors */ }
-        }
-        else if (ip == "::1" || ip == "127.0.0.1")
-        {
-            location = "Local Network (Localhost)";
+            } catch {}
         }
 
         var session = new UserSession
         {
             StudentId = user.Id,
             IpAddress = ip,
-            DeviceInfo = string.IsNullOrEmpty(userAgent) ? "Noma'lum" : (userAgent.Length > 200 ? userAgent.Substring(0, 200) : userAgent),
+            DeviceInfo = userAgent,
             LocationInfo = location,
-            FaceImagePath = null // Text logins shouldn't have a face image
+            LoginTime = DateTime.UtcNow
         };
         _context.UserSessions.Add(session);
         await _context.SaveChangesAsync();
 
         var token = GenerateJwtToken(user);
-
         return Ok(new AuthResponseDto
         {
             Token = token,
             Username = user.Username,
             FullName = user.FullName,
             Role = user.Role?.Name ?? "Student",
-            ImagePath = user.ImagePath
+            ImagePath = user.ImagePath,
+            PhoneNumber = user.PhoneNumber ?? ""
         });
     }
 
@@ -217,15 +212,16 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult> Register(RegisterDto registerDto)
     {
-        if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
+        if (await _context.Users.AnyAsync(u => u.PhoneNumber == registerDto.PhoneNumber))
         {
-            return BadRequest("Username already exists.");
+            return BadRequest("Ushbu telefon raqami allaqachon ro'yxatdan o'tgan.");
         }
 
         var user = new User
         {
-            Username = registerDto.Username,
-            PasswordHash = registerDto.Password, // Simple for demo
+            PhoneNumber = registerDto.PhoneNumber,
+            Username = string.IsNullOrEmpty(registerDto.Username) ? registerDto.PhoneNumber : registerDto.Username,
+            PasswordHash = registerDto.Password,
             FullName = registerDto.FullName,
             RoleId = 2 // Student by default
         };
@@ -233,7 +229,7 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return Ok("Registration successful.");
+        return Ok("Muvaffaqiyatli ro'yxatdan o'tdingiz.");
     }
 
     private string GenerateJwtToken(User user)
@@ -242,6 +238,7 @@ public class AuthController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
+            new Claim("phoneNumber", user.PhoneNumber ?? ""),
             new Claim(ClaimTypes.Role, user.Role?.Name ?? "Student")
         };
 
@@ -257,5 +254,36 @@ public class AuthController : ControllerBase
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    [HttpPost("update-profile-image")]
+    [Authorize]
+    public async Task<ActionResult> UpdateProfileImage([FromForm] IFormFile image)
+    {
+        if (image == null || image.Length == 0) return BadRequest("Rasm yuborilmadi.");
+        
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("id") ?? User.FindFirst("sub");
+        if (userIdClaim == null) return Unauthorized("Foydalanuvchi identifikatori topilmadi.");
+        
+        var userId = int.Parse(userIdClaim.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound("Foydalanuvchi topilmadi.");
+
+        var roleFolder = user.RoleId == 2 ? "students" : "admins";
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", roleFolder);
+        if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+        
+        var fileName = $"{Guid.NewGuid()}_{image.FileName}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
+        
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await image.CopyToAsync(stream);
+        }
+
+        user.ImagePath = $"/uploads/{roleFolder}/{fileName}";
+        await _context.SaveChangesAsync();
+
+        return Ok(new { imagePath = user.ImagePath });
     }
 }

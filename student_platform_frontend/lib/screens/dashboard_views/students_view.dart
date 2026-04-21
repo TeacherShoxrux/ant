@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../widgets/responsive_dialog.dart';
 import 'package:uuid/uuid.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class StudentsScreen extends StatefulWidget {
   const StudentsScreen({super.key});
@@ -210,15 +211,15 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameController.text.isEmpty || surnameController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yulduzcha bilan belgilangan maydonlarni to\'ldiring')));
+                      AppToast.show(context, 'Yulduzcha bilan belgilangan maydonlarni to\'ldiring');
                       return;
                     }
                     if (selectedGroupId == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guruhni tanlash majburiy!')));
+                      AppToast.show(context, 'Guruhni tanlash majburiy!');
                       return;
                     }
                     if (faceBytes == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba yuz rasmini yuklash majburiy!')));
+                      AppToast.show(context, 'Talaba yuz rasmini yuklash majburiy!');
                       return;
                     }
                     
@@ -237,10 +238,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     if (success && mounted) {
                       Navigator.pop(context);
                       _fetchStudents();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba muvaffaqiyatli qo\'shildi')));
+                      AppToast.show(context, 'Talaba muvaffaqiyatli qo\'shildi');
                     } else {
                       setDialogState(() => isSaving = false);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi.')));
+                      AppToast.show(context, 'Xatolik yuz berdi.');
                     }
                   },
                   child: const Text('Saqlash'),
@@ -401,7 +402,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameController.text.isEmpty || surnameController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Majburiy maydonlarni to\'ldiring')));
+                      AppToast.show(context, 'Majburiy maydonlarni to\'ldiring');
                       return;
                     }
                     setDialogState(() => isSaving = true);
@@ -418,7 +419,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     if (success && mounted) {
                       Navigator.pop(context);
                       _fetchStudents();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O\'zgarishlar saqlandi')));
+                      AppToast.show(context, 'O\'zgarishlar saqlandi');
                     } else {
                       setDialogState(() => isSaving = false);
                     }
@@ -485,72 +486,106 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 32.0;
+
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              isMobile 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Talabalar ro\'yxati',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    ).animate().fadeIn().slideY(begin: 0.2),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _showAddStudentDialog,
+                        icon: const Icon(Icons.person_add),
+                        label: const Text('Talaba qo\'shish'),
+                      ),
+                    ).animate().fadeIn(delay: 200.ms).scale(),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Talabalar ro\'yxati',
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                        ).animate().fadeIn().slideY(begin: 0.2),
+                        const SizedBox(height: 8),
+                        Text(
+                          _isLoading ? 'Yuklanmoqda...' : 'Jami: $_totalCount ta talaba',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ).animate().fadeIn(delay: 100.ms),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _showAddStudentDialog,
+                      icon: const Icon(Icons.person_add),
+                      label: const Text('Talaba qo\'shish'),
+                    ).animate().fadeIn(delay: 200.ms).scale(),
+                  ],
+                ),
+              const SizedBox(height: 24),
+              
+              // Search & Filter Row
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
                 children: [
-                  const Text(
-                    'Talabalar ro\'yxati',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ).animate().fadeIn().slideY(begin: 0.2),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isLoading ? 'Yuklanmoqda...' : 'Jami: $_totalCount ta talaba',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ).animate().fadeIn(delay: 100.ms),
+                  Expanded(
+                    flex: isMobile ? 0 : 2,
+                    child: SizedBox(
+                      width: isMobile ? double.infinity : null,
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Ism bo\'yicha qidirish...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        onChanged: _onSearchChanged,
+                      ),
+                    ),
+                  ),
+                  if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 16),
+                  Expanded(
+                    flex: isMobile ? 0 : 1,
+                    child: SizedBox(
+                      width: isMobile ? double.infinity : null,
+                      child: DropdownButtonFormField<int?>(
+                        isExpanded: true,
+                        value: _selectedFilterGroupId,
+                        decoration: InputDecoration(
+                          hintText: 'Barcha guruhlar',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(value: null, child: Text('Barcha guruhlar')),
+                          ..._groups.map((g) => DropdownMenuItem<int?>(value: g['id'], child: Text(g['name'])))
+                        ],
+                        onChanged: _onGroupFilterChanged,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              ElevatedButton.icon(
-                onPressed: _showAddStudentDialog,
-                icon: const Icon(Icons.person_add),
-                label: const Text('Talaba qo\'shish'),
-              ).animate().fadeIn(delay: 200.ms).scale(),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Ism bo\'yicha qidirish...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  onChanged: _onSearchChanged,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 1,
-                child: DropdownButtonFormField<int?>(
-                  value: _selectedFilterGroupId,
-                  decoration: InputDecoration(
-                    hintText: 'Barcha guruhlar',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Barcha guruhlar')),
-                    ..._groups.map((g) => DropdownMenuItem<int?>(value: g['id'], child: Text(g['name'])))
-                  ],
-                  onChanged: _onGroupFilterChanged,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+              const SizedBox(height: 24),
           
           if (_isLoading && (_students == null || _students!.isEmpty))
             const Expanded(child: Center(child: CircularProgressIndicator()))
@@ -702,13 +737,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
                         ),
                       ],
                     ),
-                  Text('Jami: $_totalCount ta', style: const TextStyle(color: Colors.grey)),
-                ],
+                    Text('Jami: $_totalCount ta', style: const TextStyle(color: Colors.grey)),
+                  ],
+                ),
               ),
-            ),
-          ]
-        ],
-      ),
+            ]],
+          )
+        );
+      },
     );
   }
 }

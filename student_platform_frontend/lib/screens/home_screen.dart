@@ -37,70 +37,76 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var width = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Asosiy panel',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-                  
-                  const SizedBox(height: 8),
-                  
-                  Text(
-                    'Bugungi ta\'lim jarayoni bo\'yicha qisqacha ma\'lumotlar',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ).animate().fadeIn(delay: 200.ms),
-                  
-                  const SizedBox(height: 32),
-                  
-                  GridView.count(
-                    crossAxisCount: width > 1200 ? 4 : (width > 800 ? 2 : 1),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 24,
-                    crossAxisSpacing: 24,
-                    childAspectRatio: width > 800 ? 2.5 : 2.2,
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 600;
+                final padding = isMobile ? 16.0 : 32.0;
+                final width = constraints.maxWidth;
+
+                return SingleChildScrollView(
+                  padding: EdgeInsets.all(padding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildStatCard('Fanlar', _stats?['totalSubjects']?.toString() ?? '0', Icons.book_outlined, Colors.blue),
-                      _buildStatCard('Mavzular', _stats?['totalTopics']?.toString() ?? '0', Icons.topic_outlined, Colors.orange),
-                      _buildStatCard('Testlar', _stats?['totalQuizzes']?.toString() ?? '0', Icons.quiz_outlined, Colors.purple),
-                      _buildStatCard('Topshiriqlar', _stats?['totalAssignments']?.toString() ?? '0', Icons.assignment_outlined, Colors.green),
-                      if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
-                        _buildStatCard('Talabalar', _stats?['totalStudents']?.toString() ?? '0', Icons.group_outlined, Colors.red),
-                    ].animate(interval: 100.ms).fadeIn(duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                      Text(
+                        'Asosiy panel',
+                        style: TextStyle(fontSize: isMobile ? 24 : 28, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A)),
+                      ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
+                      
+                      const SizedBox(height: 8),
+                      
+                      Text(
+                        'Bugungi ta\'lim jarayoni bo\'yicha qisqacha ma\'lumotlar',
+                        style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 14 : 16),
+                      ).animate().fadeIn(delay: 200.ms),
+                      
+                      const SizedBox(height: 32),
+                      
+                      GridView.count(
+                        crossAxisCount: width > 1200 ? 4 : (width > 800 ? 2 : 1),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: width > 1200 ? 2.5 : (width > 800 ? 2.8 : 3.5),
+                        children: [
+                          _buildStatCard('Fanlar', _stats?['totalSubjects']?.toString() ?? '0', Icons.book_outlined, Colors.blue),
+                          _buildStatCard('Mavzular', _stats?['totalTopics']?.toString() ?? '0', Icons.topic_outlined, Colors.orange),
+                          _buildStatCard('Testlar', _stats?['totalQuizzes']?.toString() ?? '0', Icons.quiz_outlined, Colors.purple),
+                          _buildStatCard('Topshiriqlar', _stats?['totalAssignments']?.toString() ?? '0', Icons.assignment_outlined, Colors.green),
+                          if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
+                            _buildStatCard('Talabalar', _stats?['totalStudents']?.toString() ?? '0', Icons.group_outlined, Colors.red),
+                        ].animate(interval: 100.ms).fadeIn(duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                      ),
+                      
+                      const SizedBox(height: 48),
+                      
+                      Text(
+                        'Tezkor Harakatlar',
+                        style: TextStyle(fontSize: isMobile ? 20 : 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ).animate().fadeIn(delay: 400.ms),
+                      
+                      const SizedBox(height: 24),
+                      
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildQuickAction(context, 'Mening fanlarim', Icons.menu_book, '/subjects', isMobile),
+                          if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
+                            _buildQuickAction(context, 'Fan qo\'shish', Icons.add_box_outlined, '/subjects', isMobile),
+                          _buildQuickAction(context, 'O\'zlashtirish', Icons.bar_chart, '/grades', isMobile),
+                          _buildQuickAction(context, 'Profil', Icons.person, '/profile', isMobile),
+                        ].animate(interval: 100.ms).fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                      )
+                    ],
                   ),
-                  
-                  const SizedBox(height: 48),
-                  
-                  const Text(
-                    'Tezkor Harakatlar',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ).animate().fadeIn(delay: 400.ms),
-                  
-                  const SizedBox(height: 24),
-                  
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      _buildQuickAction(context, 'Mening fanlarim', Icons.menu_book, '/subjects'),
-                      if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
-                        _buildQuickAction(context, 'Fan qo\'shish', Icons.add_box_outlined, '/subjects'),
-                      _buildQuickAction(context, 'O\'zlashtirish', Icons.bar_chart, '/grades'),
-                      _buildQuickAction(context, 'Profil', Icons.person, '/profile'),
-                    ].animate(interval: 100.ms).fadeIn(delay: 500.ms).slideX(begin: -0.1),
-                  )
-                ],
-              ),
+                );
+              },
             ),
     );
   }
@@ -153,12 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickAction(BuildContext context, String title, IconData icon, String path) {
+  Widget _buildQuickAction(BuildContext context, String title, IconData icon, String path, bool isMobile) {
     return InkWell(
       onTap: () => context.go(path),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -171,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 12),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: isMobile ? 13 : 14),
             ),
           ],
         ),

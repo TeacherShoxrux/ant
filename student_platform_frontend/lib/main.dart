@@ -15,12 +15,15 @@ import 'screens/dashboard_views/admins_view.dart';
 import 'screens/dashboard_views/profile_view.dart';
 import 'screens/dashboard_views/sessions_view.dart';
 import 'screens/welcome_screen.dart';
+import 'logic/notification/notification_cubit.dart';
+import 'screens/notifications_screen.dart';
 
 void main() {
   runApp(
     MultiBlocProvider(
       providers: [
         BlocProvider<AuthCubit>(create: (_) => AuthCubit()),
+        BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()..fetchNotifications()),
       ],
       child: const StudentPlatformApp(),
     ),
@@ -105,6 +108,10 @@ class _StudentPlatformAppState extends State<StudentPlatformApp> {
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) => const NotificationsScreen(),
             ),
           ],
         ),

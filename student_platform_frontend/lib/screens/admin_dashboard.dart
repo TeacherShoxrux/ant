@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -22,7 +23,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (success) {
       _subjectNameController.clear();
       _subjectDescController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fan muvaffaqiyatli qo\'shildi.')));
+      AppToast.show(context, 'Fan muvaffaqiyatli qo\'shildi.');
     }
   }
 

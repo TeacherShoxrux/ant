@@ -91,4 +91,17 @@ class AuthCubit extends Cubit<AuthState> {
     await prefs.clear();
     emit(AuthUnauthenticated());
   }
+
+  Future<void> updateImage(String newPath) async {
+    final s = state;
+    if (s is AuthAuthenticated) {
+      emit(AuthAuthenticated(
+        token: s.token,
+        role: s.role,
+        fullName: s.fullName,
+        username: s.username,
+        imagePath: newPath,
+      ));
+    }
+  }
 }

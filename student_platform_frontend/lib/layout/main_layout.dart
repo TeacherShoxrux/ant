@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import '../logic/auth/auth_cubit.dart';
 import '../logic/auth/auth_state.dart';
+import '../logic/notification/notification_cubit.dart';
+import '../logic/notification/notification_state.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -54,9 +56,40 @@ class _MainLayoutState extends State<MainLayout> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black87),
-            onPressed: () {},
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              int unreadCount = 0;
+              if (state is NotificationLoaded) {
+                unreadCount = state.unreadCount;
+              }
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, color: Colors.black87),
+                    onPressed: () => context.go('/notifications'),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 16),
           BlocBuilder<AuthCubit, AuthState>(
@@ -135,6 +168,22 @@ class _MainLayoutState extends State<MainLayout> {
             
           _buildNavItem(context, 'Profil', Icons.person_outline, '/profile', currentPath, isDrawer: isDrawer),
           
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              int count = 0;
+              if (state is NotificationLoaded) count = state.unreadCount;
+              return _buildNavItem(
+                context, 
+                'Xabarnomalar', 
+                Icons.notifications_outlined, 
+                '/notifications', 
+                currentPath, 
+                isDrawer: isDrawer,
+                badgeCount: count,
+              );
+            },
+          ),
+          
           const Spacer(),
           const Divider(color: Colors.white24),
           ListTile(
@@ -183,7 +232,7 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, String title, IconData icon, String path, String currentPath, {required bool isDrawer}) {
+  Widget _buildNavItem(BuildContext context, String title, IconData icon, String path, String currentPath, {required bool isDrawer, int? badgeCount}) {
     final isSelected = currentPath.startsWith(path);
     
     return Padding(
@@ -208,15 +257,29 @@ class _MainLayoutState extends State<MainLayout> {
             child: Row(
               children: [
                 Icon(icon, color: Colors.white, size: 22),
-                const SizedBox(width: 16),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 15,
+                 const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
+                if (badgeCount != null && badgeCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$badgeCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
               ],
             ),
           ),

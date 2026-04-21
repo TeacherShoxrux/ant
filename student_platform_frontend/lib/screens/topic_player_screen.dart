@@ -13,6 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class LessonPlayerScreen extends StatefulWidget {
   final Topic topic;
@@ -193,7 +194,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                           if (success && mounted) {
                             Navigator.pop(context);
                             _fetchTopicContent();
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hujjat muvaffaqiyatli yuklandi.')));
+                            AppToast.show(context, 'Hujjat muvaffaqiyatli yuklandi.');
                           }
                         } finally {
                           if (mounted) setDialogState(() => isUploading = false);
@@ -210,65 +211,72 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(widget.topic.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E3A8A),
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: _isLoadingContent
-          ? const Center(child: CircularProgressIndicator())
-          : DefaultTabController(
-              length: 3,
-              child: Column(
-                children: [
-                   Container(
-                     color: Colors.white,
-                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                     child: Container(
-                       decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Colors.black12, width: 1.0)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        
+        return Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            title: Text(widget.topic.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 18 : 20)),
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF1E3A8A),
+            elevation: 0,
+            centerTitle: true,
+          ),
+          body: _isLoadingContent
+              ? const Center(child: CircularProgressIndicator())
+              : DefaultTabController(
+                  length: 3,
+                  child: Column(
+                    children: [
+                       Container(
+                         color: Colors.white,
+                         padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16),
+                         child: Container(
+                           decoration: const BoxDecoration(
+                              border: Border(bottom: BorderSide(color: Colors.black12, width: 1.0)),
+                           ),
+                           child: TabBar(
+                             isScrollable: isMobile,
+                             indicatorColor: const Color(0xFF1E3A8A),
+                             indicatorWeight: 3,
+                             labelColor: const Color(0xFF1E3A8A),
+                             unselectedLabelColor: Colors.grey,
+                             labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16),
+                             tabs: const [
+                               Tab(text: 'Dars matni', icon: Icon(Icons.menu_book)),
+                               Tab(text: 'Nazorat Testi', icon: Icon(Icons.quiz)),
+                               Tab(text: 'Topshiriq (Vazifa)', icon: Icon(Icons.upload_file)),
+                             ],
+                           ),
+                         ),
                        ),
-                       child: const TabBar(
-                         indicatorColor: Color(0xFF1E3A8A),
-                         indicatorWeight: 3,
-                         labelColor: Color(0xFF1E3A8A),
-                         unselectedLabelColor: Colors.grey,
-                         labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                         tabs: [
-                           Tab(text: 'Dars matni va Media', icon: Icon(Icons.menu_book)),
-                           Tab(text: 'Nazorat Testi', icon: Icon(Icons.quiz)),
-                           Tab(text: 'Topshiriq (Vazifa)', icon: Icon(Icons.upload_file)),
-                         ],
-                       ),
-                     ),
-                   ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildMainContent(),
-                        _buildTestSection(),
-                        _buildAssignmentSection(),
-                      ],
-                    ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _buildMainContent(isMobile),
+                            _buildTestSection(isMobile),
+                            _buildAssignmentSection(isMobile),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+        );
+      },
     );
   }
 
-  Widget _buildMainContent() {
+  Widget _buildMainContent(bool isMobile) {
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
     final docs = _fullTopic?.documents ?? [];
     final videos = _fullTopic?.videos ?? [];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 20 : 32),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
@@ -278,14 +286,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               // Lesson Header Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(32),
+                padding: EdgeInsets.all(isMobile ? 20 : 32),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(isMobile ? 16 : 24),
                   boxShadow: [
                     BoxShadow(color: const Color(0xFF1E3A8A).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
                   ],
@@ -294,30 +302,31 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                      child: const Text('DARSNING NAZARIY QISMI', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                      child: Text('DARSNING NAZARIY QISMI', style: TextStyle(color: Colors.white, fontSize: isMobile ? 8 : 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                     ),
                     const SizedBox(height: 16),
-                    Text(widget.topic.title, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text(widget.topic.title, style: TextStyle(fontSize: isMobile ? 24 : 32, fontWeight: FontWeight.bold, color: Colors.white)),
                     if (widget.topic.createdByName != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text('Mavzu muallifi: ${widget.topic.createdByName}', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontStyle: FontStyle.italic)),
+                        child: Text('Mavzu muallifi: ${widget.topic.createdByName}', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: isMobile ? 10 : 12, fontStyle: FontStyle.italic)),
                       ),
                     const SizedBox(height: 12),
-                    Text(widget.topic.content, style: TextStyle(fontSize: 16, color: Colors.indigo.shade50, height: 1.6)),
+                    Text(widget.topic.content, style: TextStyle(fontSize: isMobile ? 14 : 16, color: Colors.indigo.shade50, height: 1.6)),
                   ],
                 ),
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: isMobile ? 32 : 48),
 
-              Row(
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                    // Left Side: Videos
                    Expanded(
-                     flex: 3,
+                     flex: isMobile ? 0 : 3,
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
@@ -329,9 +338,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                            GridView.builder(
                              shrinkWrap: true,
                              physics: const NeverScrollableScrollPhysics(),
-                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                               crossAxisCount: 2,
-                               childAspectRatio: 1.5,
+                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                               crossAxisCount: isMobile ? 1 : 2,
+                               childAspectRatio: isMobile ? 1.8 : 1.5,
                                crossAxisSpacing: 16,
                                mainAxisSpacing: 16,
                              ),
@@ -344,14 +353,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                        ],
                      ),
                    ),
-                   const SizedBox(width: 32),
+                   if (isMobile) const SizedBox(height: 32) else const SizedBox(width: 32),
                    // Right Side: Documents
                    Expanded(
-                     flex: 2,
+                     flex: isMobile ? 0 : 2,
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
-                         _buildSectionHeader('Qo\'shimcha materiallar', Icons.folder_open, isAdmin ? _showAddDocumentDialog : null),
+                         _buildSectionHeader(isMobile ? 'Qo\'shimcha' : 'Qo\'shimcha materiallar', Icons.folder_open, isAdmin ? _showAddDocumentDialog : null),
                          const SizedBox(height: 16),
                          if (docs.isEmpty)
                             _buildEmptyState('Fayllar mavjud emas.', Icons.file_copy_outlined)
@@ -621,7 +630,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     );
   }
 
-  Widget _buildTestSection() {
+  Widget _buildTestSection(bool isMobile) {
     if (_isLoadingContent) return const Center(child: CircularProgressIndicator());
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
@@ -629,7 +638,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 20 : 32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1000),
           child: Column(
@@ -659,14 +668,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                           borderRadius: BorderRadius.circular(24),
                           child: InkWell(
                             onTap: () => _showQuizDetailsDialog(q),
-                            child: Row(
+                            child: Flex(
+                              direction: isMobile ? Axis.vertical : Axis.horizontal,
                               children: [
                                 if (q.imagePath != null)
                                   Hero(
                                     tag: 'quiz_${q.id}',
                                     child: Container(
-                                      width: 240,
-                                      height: 200,
+                                      width: isMobile ? double.infinity : 240,
+                                      height: isMobile ? 180 : 200,
                                       decoration: BoxDecoration(
                                         image: DecorationImage(
                                           image: NetworkImage('${ApiService.serverUrl}${q.imagePath}'),
@@ -685,8 +695,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                     ),
                                   ),
                                 Expanded(
+                                  flex: isMobile ? 0 : 1,
                                   child: Padding(
-                                    padding: const EdgeInsets.all(28),
+                                    padding: EdgeInsets.all(isMobile ? 20 : 28),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -696,7 +707,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(q.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                                                  Text(q.title, style: TextStyle(fontSize: isMobile ? 20 : 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A))),
                                                   if (q.createdByName != null)
                                                     Text('Test muallifi: ${q.createdByName}', style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontStyle: FontStyle.italic)),
                                                 ],
@@ -708,43 +719,46 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 12),
-                                        Text(q.content, maxLines: 2, style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 15, height: 1.5)),
+                                        Text(q.content, maxLines: 2, style: TextStyle(color: Colors.blueGrey.shade600, fontSize: isMobile ? 13 : 15, height: 1.5)),
                                         const SizedBox(height: 20),
-                                        Row(
+                                        Wrap(
+                                          spacing: 12,
+                                          runSpacing: 8,
                                           children: [
-                                            _buildInfoChip(Icons.timer_outlined, '${q.timeLimitMinutes} daqiqa', Colors.orange),
-                                            const SizedBox(width: 16),
+                                            _buildInfoChip(Icons.timer_outlined, '${q.timeLimitMinutes} daq', Colors.orange),
                                             _buildInfoChip(Icons.help_outline_rounded, '${q.questions.length} ta savol', Colors.indigo),
-                                            const SizedBox(width: 16),
                                             _buildInfoChip(Icons.check_circle_outline_rounded, 'Muvaffaqiyat 60%', Colors.green),
                                           ],
                                         ),
                                         const SizedBox(height: 24),
                                         Row(
                                           children: [
-                                            ElevatedButton(
-                                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(quiz: q))),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(0xFF1E3A8A),
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                                elevation: 8,
-                                                shadowColor: const Color(0xFF1E3A8A).withOpacity(0.4),
-                                              ),
-                                              child: const Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text('Testni boshlash', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                                  SizedBox(width: 12),
-                                                  Icon(Icons.arrow_forward_rounded, size: 18),
-                                                ],
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(quiz: q))),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFF1E3A8A),
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32, vertical: 16),
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                                  elevation: 8,
+                                                  shadowColor: const Color(0xFF1E3A8A).withOpacity(0.4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text('Testni boshlash', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16)),
+                                                    const SizedBox(width: 12),
+                                                    const Icon(Icons.arrow_forward_rounded, size: 18),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                             if (isAdmin) ...[
-                                               const SizedBox(width: 16),
-                                               _buildAdminActionBtn(Icons.add_task_rounded, 'Savol qo\'shish', Colors.green, () => _showAddQuestionDialog(q.id)),
                                                const SizedBox(width: 8),
+                                               _buildAdminActionBtn(Icons.add_task_rounded, 'Savol qo\'shish', Colors.green, () => _showAddQuestionDialog(q.id)),
+                                               const SizedBox(width: 4),
                                                _buildAdminActionBtn(Icons.insights_rounded, 'Natijalar', Colors.indigo, () => _showQuizResultsDialog(q)),
                                             ]
                                           ],
@@ -981,7 +995,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                           child: ElevatedButton(
                             onPressed: isUploading ? null : () async {
                                if (titleController.text.isEmpty || timeController.text.isEmpty) {
-                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Iltimos test nomi va vaqtini kiriting.')));
+                                 AppToast.show(context, 'Iltimos test nomi va vaqtini kiriting.');
                                  return;
                                }
                                setDialogState(() => isUploading = true);
@@ -1142,7 +1156,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                         child: ElevatedButton(
                           onPressed: isSaving ? null : () async {
                             if (titleController.text.isEmpty || qController.text.isEmpty || optionControllers.any((c) => c.text.isEmpty)) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Iltimos barcha maydonlarni to\'ldiring.')));
+                              AppToast.show(context, 'Iltimos barcha maydonlarni to\'ldiring.');
                               return;
                             }
                             setDialogState(() => isSaving = true);
@@ -1164,7 +1178,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                             if (success && mounted) {
                               Navigator.pop(context);
                               _fetchTopicContent();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Savol muvaffaqiyatli qo\'shildi.')));
+                              AppToast.show(context, 'Savol muvaffaqiyatli qo\'shildi.');
                             } else {
                               setDialogState(() => isSaving = false);
                             }
@@ -1345,11 +1359,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     ? null
                     : () async {
                         if (titleController.text.isEmpty || descController.text.isEmpty || scoreController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sarlavha, tavsif va ballni kiritish majburiy.')));
+                          AppToast.show(context, 'Sarlavha, tavsif va ballni kiritish majburiy.');
                           return;
                         }
                         if (selectedDate != null && selectedDate!.isBefore(DateTime.now().subtract(const Duration(minutes: 1)))) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Muddatni o\'tmishga qo\'yib bo\'lmaydi.')));
+                          AppToast.show(context, 'Muddatni o\'tmishga qo\'yib bo\'lmaydi.');
                           return;
                         }
 
@@ -1384,11 +1398,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                         if (success && mounted) {
                           Navigator.pop(context);
                           _fetchTopicContent();
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'O\'zgarishlar saqlandi.' : 'Vazifa yaratildi.')));
+                          AppToast.show(context, isEdit ? 'O\'zgarishlar saqlandi.' : 'Vazifa yaratildi.');
                         } else {
                           setDialogState(() => isUploading = false);
                           if (errorMessage != null && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
+                            AppToast.show(context, errorMessage, isError: true);
                           }
                         }
                       },
@@ -1509,7 +1523,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                         if (success && mounted) {
                           Navigator.pop(context);
                           _fetchTopicContent();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vazifa muvaffaqiyatli topshirildi.')));
+                          AppToast.show(context, 'Vazifa muvaffaqiyatli topshirildi.');
                         } else if (mounted) {
                           setDialogState(() => isUploading = false);
                         }
@@ -1629,14 +1643,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                                     final maxScore = s.assignmentMaxScore ?? 100;
                                                     
                                                     if (gradeValue > maxScore) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Baho maksimal balldan ($maxScore) yuqori bo\'lishi mumkin emas.')));
+                                                      AppToast.show(context, 'Baho maksimal balldan ($maxScore) yuqori bo\'lishi mumkin emas.');
                                                       return;
                                                     }
 
                                                     setDialogState(() => isGrading = true);
                                                     final success = await _apiService.gradeSubmission(s.id, gradeValue, "");
                                                     if (success && mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Baho qo\'yildi.')));
+                                                      AppToast.show(context, 'Baho qo\'yildi.');
                                                       Navigator.pop(context);
                                                       _showSubmissionsMonitoringDialog(); // Refresh
                                                     }
@@ -1664,14 +1678,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                                     final maxScore = s.assignmentMaxScore ?? 100;
 
                                                     if (gradeValue > maxScore) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Baho maksimal balldan ($maxScore) yuqori bo\'lishi mumkin emas.')));
+                                                      AppToast.show(context, 'Baho maksimal balldan ($maxScore) yuqori bo\'lishi mumkin emas.');
                                                       return;
                                                     }
 
                                                     setDialogState(() => isGrading = true);
                                                     final success = await _apiService.gradeSubmission(s.id, gradeValue, "");
                                                     if (success && mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Baho yangilandi.')));
+                                                      AppToast.show(context, 'Baho yangilandi.');
                                                       Navigator.pop(context);
                                                       _showSubmissionsMonitoringDialog(); // Refresh
                                                     }
@@ -1699,7 +1713,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     );
   }
 
-  Widget _buildAssignmentSection() {
+  Widget _buildAssignmentSection(bool isMobile) {
     if (_isLoadingContent) return const Center(child: CircularProgressIndicator());
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
@@ -1707,22 +1721,27 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 20 : 32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1000),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: isMobile ? CrossAxisAlignment.start : CrossAxisAlignment.center,
                 children: [
                   _buildSectionHeader('Mustaqil ishlar', Icons.history_edu_outlined, isAdmin ? () => _showAssignmentDialog() : null),
                   if (isAdmin)
-                    TextButton.icon(
-                      onPressed: _showSubmissionsMonitoringDialog,
-                      icon: const Icon(Icons.people_alt_outlined),
-                      label: const Text('Monitoring'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
+                    Padding(
+                      padding: EdgeInsets.only(top: isMobile ? 8 : 0),
+                      child: TextButton.icon(
+                        onPressed: _showSubmissionsMonitoringDialog,
+                        icon: const Icon(Icons.people_alt_outlined),
+                        label: const Text('Monitoring'),
+                        style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
+                      ),
                     ),
                 ],
               ),
@@ -1747,18 +1766,20 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                           border: isGraded ? Border.all(color: Colors.green.shade200, width: 2) : null,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(24.0),
+                          padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
+                              Flex(
+                                direction: isMobile ? Axis.vertical : Axis.horizontal,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
+                                    flex: isMobile ? 0 : 1,
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(a.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                                        Text(a.title, style: TextStyle(fontSize: isMobile ? 18 : 22, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A))),
                                         if (a.createdByName != null)
                                           Text('Muallif: ${a.createdByName}', style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontStyle: FontStyle.italic)),
                                         const SizedBox(height: 4),
@@ -1766,12 +1787,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                       ],
                                     ),
                                   ),
+                                  if (isMobile) const SizedBox(height: 12),
                                   if (isGraded) ...[
                                     _buildStatusTag('${a.grade} ball', _getGradeColor((a.grade! / a.maxScore) * 100)),
                                     if (a.gradedByName != null)
                                       Padding(
-                                        padding: const EdgeInsets.only(left: 8),
-                                        child: Text('${a.gradedByName} tomonidan baholandi', style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontStyle: FontStyle.italic)),
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text('${a.gradedByName} baholadi', style: TextStyle(color: Colors.grey.shade600, fontSize: 10, fontStyle: FontStyle.italic)),
                                       ),
                                   ] else if (isSubmitted)
                                     _buildStatusTag('Yuborilgan', Colors.blue)
@@ -1780,27 +1802,30 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              Text(a.description, style: TextStyle(color: Colors.black87, fontSize: 15, height: 1.6)),
+                              Text(a.description, style: TextStyle(color: Colors.black87, fontSize: isMobile ? 14 : 15, height: 1.6)),
                               const SizedBox(height: 16),
                               if (a.deadline != null)
                                 Row(
                                   children: [
                                     Icon(Icons.event_note, size: 16, color: a.deadline!.isBefore(DateTime.now()) ? Colors.red : Colors.red.shade400),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      'Topshirish muddati: ${DateFormat('yyyy-MM-dd HH:mm').format(a.deadline!.toLocal())}', 
-                                      style: TextStyle(
-                                        color: a.deadline!.isBefore(DateTime.now()) ? Colors.red : Colors.red.shade700, 
-                                        fontWeight: FontWeight.bold, 
-                                        fontSize: 13
-                                      )
+                                    Expanded(
+                                      child: Text(
+                                        'Muddati: ${DateFormat('yyyy-MM-dd HH:mm').format(a.deadline!.toLocal())}', 
+                                        style: TextStyle(
+                                          color: a.deadline!.isBefore(DateTime.now()) ? Colors.red : Colors.red.shade700, 
+                                          fontWeight: FontWeight.bold, 
+                                          fontSize: 12
+                                        )
+                                      ),
                                     ),
                                   ],
                                 ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 20),
                               const Divider(),
                               const SizedBox(height: 12),
-                              Row(
+                              Flex(
+                                direction: isMobile ? Axis.vertical : Axis.horizontal,
                                 children: [
                                   if (a.filePath != null)
                                     TextButton.icon(
@@ -1809,30 +1834,34 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                         if (await canLaunchUrl(url)) await launchUrl(url);
                                       },
                                       icon: const Icon(Icons.attach_file, size: 18),
-                                      label: const Text('Faylni yuklab olish'),
+                                      label: const Text('Faylni yuklash'),
                                     ),
-                                  const Spacer(),
-                                  ElevatedButton.icon(
-                                    onPressed: (a.deadline != null && a.deadline!.isBefore(DateTime.now())) 
-                                      ? null 
-                                      : () => _showSubmitAssignmentDialog(a),
-                                    icon: Icon(isSubmitted 
-                                      ? Icons.published_with_changes 
-                                      : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? Icons.lock : Icons.file_upload_outlined)),
-                                    label: Text(isSubmitted 
-                                      ? 'Qayta topshirish' 
-                                      : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? 'Muddati o\'tgan' : 'Vazifani topshirish')),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isSubmitted ? Colors.blue.shade700 : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? Colors.red.shade50 : const Color(0xFF1E3A8A)),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  if (!isMobile) const Spacer(),
+                                  if (isMobile) const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: isMobile ? double.infinity : null,
+                                    child: ElevatedButton.icon(
+                                      onPressed: (a.deadline != null && a.deadline!.isBefore(DateTime.now())) 
+                                        ? null 
+                                        : () => _showSubmitAssignmentDialog(a),
+                                      icon: Icon(isSubmitted 
+                                        ? Icons.published_with_changes 
+                                        : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? Icons.lock : Icons.file_upload_outlined)),
+                                      label: Text(isSubmitted 
+                                        ? 'Qayta topshirish' 
+                                        : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? 'Muddati o\'tgan' : 'Vazifani topshirish')),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isSubmitted ? Colors.blue.shade700 : (a.deadline != null && a.deadline!.isBefore(DateTime.now()) ? Colors.red.shade50 : const Color(0xFF1E3A8A)),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               if (isAdmin) ...[
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [

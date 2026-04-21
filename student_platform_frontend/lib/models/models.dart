@@ -24,6 +24,20 @@ class AuthResponse {
   }
 }
 
+class Group {
+  final int id;
+  final String name;
+
+  Group({required this.id, required this.name});
+
+  factory Group.fromJson(Map<String, dynamic> json) {
+    return Group(
+      id: json['id'],
+      name: json['name'],
+    );
+  }
+}
+
 class Subject {
   final int id;
   final String name;
@@ -39,13 +53,14 @@ class Subject {
 
   factory Subject.fromJson(Map<String, dynamic> json) {
     return Subject(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
       isDisabled: json['isDisabled'] ?? false,
     );
   }
 }
+
 
 class Topic {
   final int id;
@@ -389,6 +404,64 @@ class UserSession {
       deviceInfo: json['deviceInfo'],
       locationInfo: json['locationInfo'],
       faceImagePath: json['faceImagePath'],
+    );
+  }
+}
+
+class NotificationModel {
+  final int id;
+  final String title;
+  final String message;
+  final DateTime createdAt;
+  final bool isRead;
+  final String? senderName;
+
+  NotificationModel({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    required this.isRead,
+    this.senderName,
+  });
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
+      id: json['id'],
+      title: json['title'],
+      message: json['message'],
+      createdAt: DateTime.parse(json['createdAt']),
+      isRead: json['isRead'],
+      senderName: json['senderName'],
+    );
+  }
+}
+
+class OnlineMeeting {
+  final int id;
+  final int subjectId;
+  final String title;
+  final String meetingUrl;
+  final DateTime startTime;
+  final String? createdByName;
+
+  OnlineMeeting({
+    required this.id,
+    required this.subjectId,
+    required this.title,
+    required this.meetingUrl,
+    required this.startTime,
+    this.createdByName,
+  });
+
+  factory OnlineMeeting.fromJson(Map<String, dynamic> json) {
+    return OnlineMeeting(
+      id: json['id'],
+      subjectId: json['subjectId'],
+      title: json['title'] ?? '',
+      meetingUrl: json['meetingUrl'] ?? '',
+      startTime: DateTime.parse(json['startTime']),
+      createdByName: json['createdByName'],
     );
   }
 }

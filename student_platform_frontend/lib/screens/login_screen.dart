@@ -1,3 +1,4 @@
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -75,18 +76,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         context.go('/home');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Yuz aniqlanmadi yoki ruxsat berilmagan'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.show(context, 'Yuz aniqlanmadi yoki ruxsat berilmagan', isError: true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xatolik: $e'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Xatolik: $e', isError: true);
       }
     } finally {
       if (mounted) setState(() => _isProcessingFace = false);
@@ -102,12 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       context.go('/home');
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login yoki parol noto\'g\'ri'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.show(context, 'Login yoki parol noto\'g\'ri', isError: true);
     }
   }
 

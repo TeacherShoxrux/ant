@@ -141,6 +141,101 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.ToTable("Groups");
                 });
 
+            modelBuilder.Entity("StudentPlatform.Backend.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SenderId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TargetGroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("TargetGroupId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.NotificationRead", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("NotificationReads");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.OnlineMeeting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MeetingUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("OnlineMeetings");
+                });
+
             modelBuilder.Entity("StudentPlatform.Backend.Models.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -567,6 +662,57 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("StudentPlatform.Backend.Models.Notification", b =>
+                {
+                    b.HasOne("StudentPlatform.Backend.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId");
+
+                    b.HasOne("StudentPlatform.Backend.Models.Group", "TargetGroup")
+                        .WithMany()
+                        .HasForeignKey("TargetGroupId");
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("TargetGroup");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.NotificationRead", b =>
+                {
+                    b.HasOne("StudentPlatform.Backend.Models.Notification", "Notification")
+                        .WithMany()
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudentPlatform.Backend.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("StudentPlatform.Backend.Models.OnlineMeeting", b =>
+                {
+                    b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById");
+
+                    b.HasOne("StudentPlatform.Backend.Models.Subject", "Subject")
+                        .WithMany("OnlineMeetings")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Subject");
+                });
+
             modelBuilder.Entity("StudentPlatform.Backend.Models.Subject", b =>
                 {
                     b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
@@ -727,6 +873,8 @@ namespace StudentPlatform.Backend.Data.Migrations
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Subject", b =>
                 {
+                    b.Navigation("OnlineMeetings");
+
                     b.Navigation("SubjectGroups");
 
                     b.Navigation("Topics");

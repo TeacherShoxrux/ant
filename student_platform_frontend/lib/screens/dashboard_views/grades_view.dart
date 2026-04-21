@@ -6,6 +6,7 @@ import '../../logic/auth/auth_cubit.dart';
 import '../../logic/auth/auth_state.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../widgets/responsive_dialog.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class GradesScreen extends StatefulWidget {
   const GradesScreen({super.key});
@@ -19,74 +20,188 @@ class _GradesScreenState extends State<GradesScreen> {
   List<Subject>? _subjects;
   bool _isLoading = true;
 
+  // Pagination & Search
+  int _currentPage = 1;
+  int _pageSize = 10;
+  int _totalCount = 0;
+  int _totalPages = 0;
+  String _searchTerm = '';
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _fetchSubjects();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchSubjects() async {
-    final subjects = await _apiService.getSubjects();
-    if (mounted) {
-      setState(() {
-        _subjects = subjects;
-        _isLoading = false;
-      });
+    setState(() => _isLoading = true);
+    try {
+      final data = await _apiService.getSubjects(
+        pageNumber: _currentPage,
+        pageSize: _pageSize,
+        searchTerm: _searchTerm,
+      );
+      if (mounted) {
+        setState(() {
+          final List items = data['items'] ?? [];
+          _subjects = items.map((s) => Subject.fromJson(s)).toList();
+          _totalCount = data['totalCount'] ?? 0;
+          _totalPages = data['totalPages'] ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.show(context, 'Xatolik: $e', isError: true);
+      }
     }
+  }
+
+  void _onSearch() {
+    setState(() {
+      _searchTerm = _searchController.text.trim();
+      _currentPage = 1;
+    });
+    _fetchSubjects();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_subjects == null || _subjects!.isEmpty) {
-      return const Center(child: Text('Baholar topilmadi.'));
-    }
-
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
 
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'O\'zlashtirish jurnali',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-          ).animate().fadeIn().slideY(begin: 0.2),
-          const SizedBox(height: 8),
-          Text(
-            isAdmin ? 'Talabalar natijalarini kuzatish' : 'Barcha fanlardan yakuniy natijalar',
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-          ).animate().fadeIn(delay: 100.ms),
-          const SizedBox(height: 32),
-          
-          Expanded(
-            child: ListView.builder(
-              itemCount: _subjects!.length,
-              itemBuilder: (context, index) {
-                final subject = _subjects![index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                      child: isAdmin 
-                        ? _buildAdminSubjectTile(subject)
-                        : _buildStudentSubjectTile(subject),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 32.0;
+
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'O\'zlashtirish jurnali',
+                style: TextStyle(fontSize: isMobile ? 24 : 28, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A)),
+              ).animate().fadeIn().slideY(begin: 0.2),
+              const SizedBox(height: 8),
+              Text(
+                isAdmin ? 'Talabalar natijalarini kuzatish' : 'Barcha fanlardan yakuniy natijalar',
+                style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 14 : 16),
+              ).animate().fadeIn(delay: 100.ms),
+              const SizedBox(height: 32),
+              
+              // Search Bar
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
+                children: [
+                  Expanded(
+                    flex: isMobile ? 0 : 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Fanlarni qidirish...',
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        ),
+                        onSubmitted: (_) => _onSearch(),
+                      ),
                     ),
                   ),
-                ).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).slideX(begin: 0.1);
-              },
-            ),
+                  if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 16),
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: ElevatedButton(
+                      onPressed: _onSearch,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Qidirish', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 200.ms),
+              const SizedBox(height: 32),
+
+              if (_isLoading)
+                const Expanded(child: Center(child: CircularProgressIndicator()))
+              else if (_subjects == null || _subjects!.isEmpty)
+                const Expanded(child: Center(child: Text('Baholar topilmadi.')))
+              else ...[
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _subjects!.length,
+                    itemBuilder: (context, index) {
+                      final subject = _subjects![index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                            child: isAdmin 
+                              ? _buildAdminSubjectTile(subject)
+                              : _buildStudentSubjectTile(subject),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).slideX(begin: 0.1);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Pagination Controls
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: _currentPage > 1 ? () {
+                          setState(() => _currentPage--);
+                          _fetchSubjects();
+                        } : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text(
+                        isMobile ? '$_currentPage / $_totalPages' : 'Sahifa $_currentPage / $_totalPages (${_totalCount} ta fan)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        onPressed: _currentPage < _totalPages ? () {
+                          setState(() => _currentPage++);
+                          _fetchSubjects();
+                        } : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 300.ms),
+              ],
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -233,7 +348,7 @@ class _GradesScreenState extends State<GradesScreen> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Xatolik: $e')));
+        AppToast.show(context, 'Xatolik: $e');
       }
     }
   }
@@ -273,12 +388,12 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   void _downloadReport(int subjectId, int groupId, String subjectName) async {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hisobot yuklanmoqda kuting...')));
+    AppToast.show(context, 'Hisobot yuklanmoqda kuting...');
     try {
       await _apiService.downloadExcelReport(subjectId, groupId, subjectName);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hisobot yuklab olindi!')));
+      if (mounted) AppToast.show(context, 'Hisobot yuklab olindi!');
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) AppToast.show(context, e.toString());
     }
   }
 }

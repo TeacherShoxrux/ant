@@ -4,139 +4,229 @@ import '../../logic/auth/auth_cubit.dart';
 import '../../services/api_service.dart';
 import '../../logic/auth/auth_state.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, state) {
-        if (state is! AuthAuthenticated) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 32.0;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Mening Profilim',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                ).animate().fadeIn().slideY(begin: 0.2),
-                const SizedBox(height: 32),
-                
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: const Color(0xFF1E3A8A),
-                          backgroundImage: state.imagePath != null 
-                            ? NetworkImage('${ApiService.serverUrl}${state.imagePath}') 
-                            : null,
-                          child: state.imagePath == null 
-                            ? const Icon(Icons.person_outline, size: 50, color: Colors.white)
-                            : null,
-                        ).animate().scale(delay: 200.ms),
-                        const SizedBox(width: 32),
-                        
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+        return BlocBuilder<AuthCubit, AuthState>(
+          builder: (context, state) {
+            if (state is! AuthAuthenticated) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Mening profilim',
+                    style: TextStyle(fontSize: isMobile ? 24 : 28, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A)),
+                  ).animate().fadeIn().slideY(begin: 0.2),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Shaxsiy ma\'lumotlar va sozlamalar',
+                    style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 14 : 16),
+                  ).animate().fadeIn(delay: 100.ms),
+                  const SizedBox(height: 32),
+                  
+                  Flex(
+                    direction: isMobile ? Axis.vertical : Axis.horizontal,
+                    crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+                    children: [
+                      // Profile Image & Actions
+                      Column(
+                        children: [
+                          Stack(
                             children: [
-                              Text(
-                                state.fullName,
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                              CircleAvatar(
+                                radius: isMobile ? 60 : 80,
+                                backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
+                                backgroundImage: state.imagePath != null 
+                                  ? NetworkImage('${ApiService.serverUrl}${state.imagePath}?v=${DateTime.now().millisecondsSinceEpoch}') 
+                                  : null,
+                                child: state.imagePath == null 
+                                  ? Icon(Icons.person, size: isMobile ? 60 : 80, color: const Color(0xFF1E3A8A))
+                                  : null,
                               ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1E3A8A).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  state.role.toUpperCase(),
-                                  style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 12),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  decoration: const BoxDecoration(color: Color(0xFF1E3A8A), shape: BoxShape.circle),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                    onPressed: () => _pickAndUploadImage(context),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 32),
-                              
-                              _buildInfoRow('Login (Username)', state.username, Icons.person_outline),
-                              const Divider(height: 32),
-                              // In a real app, you might fetch email/phone dynamically if state holds it
-                              _buildInfoRow('Ro\'yxatdan o\'tgan ro\'l', state.role, Icons.security),
                             ],
                           ),
-                        )
-                      ],
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 100.ms),
-                
-                if (state.isAdmin) ...[
-                  const SizedBox(height: 32),
-                  const _ChangePasswordWidget(),
-                ],
-                
-                const SizedBox(height: 32),
-                
-                Card(
-                  elevation: 0,
-                  color: Colors.red.shade50,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.red.shade200),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => context.read<AuthCubit>().logout(),
-                    child: const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.logout, color: Colors.red),
-                          SizedBox(width: 16),
-                          Text('Tizimdan chiqish', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 16),
+                          if (isMobile) ...[
+                             Text(
+                               state.fullName, 
+                               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                               textAlign: TextAlign.center,
+                             ),
+                             Text(state.role, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                          ],
                         ],
                       ),
-                    ),
+                      if (!isMobile) const SizedBox(width: 48) else const SizedBox(height: 32),
+                      
+                      // Details
+                      Expanded(
+                        flex: isMobile ? 0 : 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!isMobile) ...[
+                              Text(state.fullName, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF1E3A8A).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                                child: Text(state.role, style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(height: 32),
+                            ],
+                            _buildInfoCard(
+                              title: 'Bog\'lanish ma\'lumotlari',
+                              items: [
+                                 {'label': 'Username', 'value': state.username, 'icon': Icons.alternate_email},
+                                 {'label': 'ID', 'value': '#${state.username}', 'icon': Icons.badge_outlined},
+                               ],
+                            ),
+                            const SizedBox(height: 24),
+                             _buildInfoCard(
+                               title: 'Tizim ma\'lumotlari',
+                               items: [
+                                 {'label': 'Status', 'value': 'Faol', 'icon': Icons.check_circle_outline},
+                               ],
+                             ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ).animate().fadeIn(delay: 200.ms),
-              ],
-            ),
-          ),
+                  
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: const _ChangePasswordWidget(),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  Card(
+                    elevation: 0,
+                    color: Colors.red.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.red.shade200),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => context.read<AuthCubit>().logout(),
+                      child: Padding(
+                        padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
+                        child: Row(
+                          mainAxisAlignment: isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.logout, color: Colors.red),
+                            const SizedBox(width: 16),
+                            Text(
+                              'Tizimdan chiqish', 
+                              style: TextStyle(
+                                color: Colors.red, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: isMobile ? 14 : 16
+                              )
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey[600], size: 20),
-        const SizedBox(width: 16),
-        Column(
+  Future<void> _pickAndUploadImage(BuildContext context) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (result != null && result.files.single.bytes != null) {
+      final bytes = result.files.single.bytes!;
+      final fileName = result.files.single.name;
+      
+      final apiService = ApiService();
+      final newPath = await apiService.updateProfileImage(bytes, fileName);
+      
+      if (newPath != null) {
+        if (context.mounted) {
+          context.read<AuthCubit>().updateImage(newPath);
+          AppToast.show(context, 'Profil rasmi muvaffaqiyatli yangilandi');
+        }
+      } else {
+        if (context.mounted) {
+          AppToast.show(context, 'Rasmni yuklashda xatolik yuz berdi. Server javobini tekshiring.', isError: true);
+        }
+      }
+    }
+  }
+
+  Widget _buildInfoCard({required String title, required List<Map<String, dynamic>> items}) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E3A8A))),
+            const SizedBox(height: 16),
+            ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                children: [
+                  Icon(item['icon'] as IconData, size: 20, color: Colors.grey),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item['label'] as String, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Text(item['value'] as String, style: const TextStyle(fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ],
+              ),
+            )),
           ],
-        )
-      ],
+        ),
+      ),
     );
   }
 }
@@ -162,12 +252,12 @@ class _ChangePasswordWidgetState extends State<_ChangePasswordWidget> {
     final confirmPwd = _confirmPasswordController.text.trim();
 
     if (oldPwd.isEmpty || newPwd.isEmpty || confirmPwd.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Barcha maydonlarni to\'ldiring')));
+      AppToast.show(context, 'Barcha maydonlarni to\'ldiring');
       return;
     }
 
     if (newPwd != confirmPwd) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yangi parollar mos kelmadi')));
+      AppToast.show(context, 'Yangi parollar mos kelmadi');
       return;
     }
 
@@ -175,12 +265,7 @@ class _ChangePasswordWidgetState extends State<_ChangePasswordWidget> {
     try {
       final result = await _apiService.changePassword(oldPwd, newPwd);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: result['success'] ? Colors.green : Colors.red,
-          ),
-        );
+        AppToast.show(context, result['message'], isError: !result['success']);
         if (result['success']) {
           _oldPasswordController.clear();
           _newPasswordController.clear();
@@ -190,7 +275,7 @@ class _ChangePasswordWidgetState extends State<_ChangePasswordWidget> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tizim xatoligi yuz berdi'), backgroundColor: Colors.red));
+        AppToast.show(context, 'Tizim xatoligi yuz berdi', isError: true);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

@@ -1,3 +1,4 @@
+import 'package:student_platform_frontend/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
@@ -21,9 +22,56 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   List<Subject>? _subjects;
   bool _isLoading = true;
 
+  // Pagination & Search
+  int _currentPage = 1;
+  int _pageSize = 9; 
+  int _totalCount = 0;
+  int _totalPages = 0;
+  String _searchTerm = '';
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _fetchSubjects();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchSubjects() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _apiService.getSubjects(
+        pageNumber: _currentPage,
+        pageSize: _pageSize,
+        searchTerm: _searchTerm,
+      );
+      if (mounted) {
+        setState(() {
+          final List items = data['items'] ?? [];
+          _subjects = items.map((s) => Subject.fromJson(s)).toList();
+          _totalCount = data['totalCount'] ?? 0;
+          _totalPages = data['totalPages'] ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.show(context, 'Xatolik: $e', isError: true);
+      }
+    }
+  }
+
+  void _onSearch() {
+    setState(() {
+      _searchTerm = _searchController.text.trim();
+      _currentPage = 1;
+    });
     _fetchSubjects();
   }
 
@@ -75,9 +123,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
               if (success && mounted) {
                 Navigator.pop(context);
                 _fetchSubjects();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Fan muvaffaqiyatli qo\'shildi')),
-                );
+                AppToast.show(context, 'Fan muvaffaqiyatli qo\'shildi');
               }
             },
             child: const Text('Qo\'shish'),
@@ -85,15 +131,6 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         ],
       ),
     );
-  }
-  Future<void> _fetchSubjects() async {
-    final subjects = await _apiService.getSubjects();
-    if (mounted) {
-      setState(() {
-        _subjects = subjects;
-        _isLoading = false;
-      });
-    }
   }
 
   void _editSubjectDialog(Subject subject) {
@@ -204,9 +241,9 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 final ok = await _apiService.attachSubjectToGroups(subject.id, selectedIds.toList());
                 if (ok && mounted) {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Muvaffaqiyatli saqlandi')));
+                  AppToast.show(context, 'Muvaffaqiyatli saqlandi');
                 } else if (mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik (yoki huquq yetarli emas)')));
+                   AppToast.show(context, 'Xatolik (yoki huquq yetarli emas)');
                 }
               },
               child: const Text('Saqlash'),
@@ -222,85 +259,192 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
     
-    // Admins see everything, students see only enabled
     final displayedSubjects = isAdmin 
         ? _subjects 
         : _subjects?.where((s) => !s.isDisabled).toList();
 
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final padding = isMobile ? 16.0 : 32.0;
 
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Mening Fanlarim',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ).animate().fadeIn().slideY(begin: 0.2),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Barcha o\'quv fanlari ro\'yxati va materiallar',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ).animate().fadeIn(delay: 100.ms),
-                ],
-              ),
-              if (isAdmin)
-                ElevatedButton.icon(
-                  onPressed: _addSubjectDialog,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Fan qo\'shish'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ).animate().fadeIn(delay: 200.ms).scale(),
-            ],
-          ),
-          const SizedBox(height: 32),
-          
-          if (displayedSubjects == null || displayedSubjects.isEmpty)
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              // Header Row
+              isMobile 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey.shade300),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Hozircha fanlar mavjud emas.',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 18),
+                    const Text(
+                      'Mening Fanlarim',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    ).animate().fadeIn().slideY(begin: 0.2),
+                    const SizedBox(height: 12),
+                    if (isAdmin)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _addSubjectDialog,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Fan qo\'shish'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 200.ms).scale(),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Mening Fanlarim',
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                          ).animate().fadeIn().slideY(begin: 0.2),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Barcha o\'quv fanlari ro\'yxati va materiallar',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ).animate().fadeIn(delay: 100.ms),
+                        ],
+                      ),
                     ),
+                    if (isAdmin)
+                      ElevatedButton.icon(
+                        onPressed: _addSubjectDialog,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Fan qo\'shish'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ).animate().fadeIn(delay: 200.ms).scale(),
                   ],
                 ),
-              ),
-            )
-          else
-            Expanded(
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: MediaQuery.of(context).size.width > 800 ? 350 : 500,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 24,
-                mainAxisSpacing: 24,
-              ),
-              itemCount: displayedSubjects.length,
-              itemBuilder: (context, index) {
-                final subject = displayedSubjects[index];
-                return _buildSubjectCard(subject, isAdmin, context).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).scale(begin: const Offset(0.95, 0.95));
-              },
-            ),
+              
+              const SizedBox(height: 32),
+              
+              // Search Bar
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
+                children: [
+                  Expanded(
+                    flex: isMobile ? 0 : 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Fanlarni qidirish...',
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        ),
+                        onSubmitted: (_) => _onSearch(),
+                      ),
+                    ),
+                  ),
+                  if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 16),
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: ElevatedButton(
+                      onPressed: _onSearch,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Qidirish', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 300.ms),
+              const SizedBox(height: 32),
+
+              if (_isLoading) 
+                const Expanded(child: Center(child: CircularProgressIndicator()))
+              else if (displayedSubjects == null || displayedSubjects.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Fanlar topilmadi.',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: isMobile ? 600 : 350,
+                      childAspectRatio: isMobile ? 1.8 : 1.5,
+                      crossAxisSpacing: padding,
+                      mainAxisSpacing: padding,
+                    ),
+                    itemCount: displayedSubjects.length,
+                    itemBuilder: (context, index) {
+                      final subject = displayedSubjects[index];
+                      return _buildSubjectCard(subject, isAdmin, context).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).scale(begin: const Offset(0.95, 0.95));
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Pagination Controls
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: _currentPage > 1 ? () {
+                          setState(() => _currentPage--);
+                          _fetchSubjects();
+                        } : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text(
+                        isMobile 
+                        ? '$_currentPage / $_totalPages' 
+                        : 'Sahifa $_currentPage / $_totalPages (${_totalCount} ta fan)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        onPressed: _currentPage < _totalPages ? () {
+                          setState(() => _currentPage++);
+                          _fetchSubjects();
+                        } : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 400.ms),
+              ],
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -317,7 +461,6 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         borderRadius: BorderRadius.circular(16),
         hoverColor: const Color(0xFF1E3A8A).withOpacity(0.05),
         onTap: isDisabled && !isAdmin ? null : () {
-          // Temporarily use MaterialPageRoute for details until details page uses GoRouter
           Navigator.push(
             context,
             MaterialPageRoute(

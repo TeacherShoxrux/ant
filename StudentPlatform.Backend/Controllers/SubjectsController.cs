@@ -21,7 +21,7 @@ public class SubjectsController : ControllerBase
 
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<IEnumerable<SubjectDto>>> GetSubjects()
+    public async Task<ActionResult> GetSubjects([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null)
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
@@ -30,6 +30,15 @@ public class SubjectsController : ControllerBase
         var role = User.FindFirstValue(ClaimTypes.Role);
         
         var query = _context.Subjects.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var search = searchTerm.ToLower().Trim();
+            query = query.Where(s => 
+                (s.Name != null && s.Name.ToLower().Contains(search)) || 
+                (s.Description != null && s.Description.ToLower().Contains(search))
+            );
+        }
 
         if (role == "Admin")
         {
@@ -42,13 +51,17 @@ public class SubjectsController : ControllerBase
         else // Student
         {
             var student = await _context.Users.FindAsync(userId);
-            if (student?.GroupId == null) return Ok(new List<SubjectDto>()); // No assigned group
+            if (student?.GroupId == null) return Ok(new { Items = new List<SubjectDto>(), TotalCount = 0 }); // No assigned group
             
             // Only subjects that are assigned to student's group
             query = query.Where(s => s.SubjectGroups.Any(sg => sg.GroupId == student.GroupId));
         }
 
+        var totalCount = await query.CountAsync();
         var subjects = await query
+            .OrderByDescending(s => s.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(s => new SubjectDto
             {
                 Id = s.Id,
@@ -58,7 +71,13 @@ public class SubjectsController : ControllerBase
             })
             .ToListAsync();
             
-        return Ok(subjects);
+        return Ok(new {
+            Items = subjects,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        });
     }
 
     [HttpGet("{id}")]
@@ -169,5 +188,103 @@ public class SubjectsController : ControllerBase
 
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    // --- Online Meetings ---
+
+    [HttpGet("{id}/meetings")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<OnlineMeetingDto>>> GetMeetings(int id)
+    {
+        var meetings = await _context.OnlineMeetings
+            .Include(m => m.CreatedBy)
+            .Where(m => m.SubjectId == id)
+            .OrderBy(m => m.StartTime)
+            .Select(m => new OnlineMeetingDto
+            {
+                Id = m.Id,
+                SubjectId = m.SubjectId,
+                Title = m.Title,
+                MeetingUrl = m.MeetingUrl,
+                StartTime = m.StartTime,
+                CreatedByName = m.CreatedBy != null ? m.CreatedBy.FullName : null
+            })
+            .ToListAsync();
+
+        return Ok(meetings);
+    }
+
+    [HttpPost("{id}/meetings")]
+    [Authorize(Roles = "Admin,Moderator")]
+    public async Task<ActionResult<OnlineMeetingDto>> CreateMeeting(int id, CreateOnlineMeetingDto dto)
+    {
+        try 
+        {
+            Console.WriteLine($"Creating meeting for subject {id}. Title: {dto.Title}");
+            var subject = await _context.Subjects.FindAsync(id);
+            if (subject == null) return NotFound("Fan topilmadi.");
+
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized("User ID topilmadi.");
+            
+            var userId = int.Parse(userIdString);
+
+            var meeting = new OnlineMeeting
+            {
+                SubjectId = id,
+                Title = dto.Title,
+                MeetingUrl = dto.MeetingUrl,
+                StartTime = dto.StartTime,
+                CreatedById = userId
+            };
+
+            _context.OnlineMeetings.Add(meeting);
+            await _context.SaveChangesAsync();
+            
+            Console.WriteLine("Meeting created successfully.");
+
+            return Ok(new OnlineMeetingDto
+            {
+                Id = meeting.Id,
+                SubjectId = meeting.SubjectId,
+                Title = meeting.Title,
+                MeetingUrl = meeting.MeetingUrl,
+                StartTime = meeting.StartTime
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating meeting: {ex.Message}");
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    [HttpPut("meetings/{meetingId}")]
+    [Authorize(Roles = "Admin,Moderator")]
+    public async Task<IActionResult> UpdateMeeting(int meetingId, CreateOnlineMeetingDto dto)
+    {
+        var meeting = await _context.OnlineMeetings.FindAsync(meetingId);
+        if (meeting == null) return NotFound("Uchrashuv topilmadi.");
+
+        meeting.Title = dto.Title;
+        meeting.MeetingUrl = dto.MeetingUrl;
+        meeting.StartTime = dto.StartTime;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("meetings/{meetingId}")]
+    [Authorize(Roles = "Admin,Moderator")]
+    public async Task<IActionResult> DeleteMeeting(int meetingId)
+    {
+        var meeting = await _context.OnlineMeetings.FindAsync(meetingId);
+        if (meeting == null) return NotFound("Uchrashuv topilmadi.");
+
+        _context.OnlineMeetings.Remove(meeting);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 }

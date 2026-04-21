@@ -99,16 +99,55 @@ class ApiService {
     }
   }
 
-  Future<List<Subject>> getSubjects() async {
+  Future<String?> updateProfileImage(Uint8List imageBytes, String fileName) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/update-profile-image'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final newImagePath = data['imagePath'];
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('imagePath', newImagePath);
+      
+      return newImagePath;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> getSubjects({int pageNumber = 1, int pageSize = 10, String? searchTerm}) async {
+    final queryParams = {
+      'pageNumber': pageNumber.toString(),
+      'pageSize': pageSize.toString(),
+    };
+    if (searchTerm != null && searchTerm.isNotEmpty) queryParams['searchTerm'] = searchTerm;
+
+    final uri = Uri.parse('$baseUrl/subjects').replace(queryParameters: queryParams);
+
     final response = await http.get(
-      Uri.parse('$baseUrl/subjects'),
+      uri,
       headers: await _getHeaders(),
     );
     if (response.statusCode == 200) {
-      List data = jsonDecode(response.body);
-      return data.map((s) => Subject.fromJson(s)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        // Fallback for old backend returning a List
+        return {
+          'items': decoded,
+          'totalCount': decoded.length,
+          'totalPages': 1,
+          'pageNumber': 1,
+          'pageSize': decoded.length,
+        };
+      }
+      return Map<String, dynamic>.from(decoded);
     }
-    return [];
+    return {'items': [], 'totalCount': 0, 'totalPages': 0};
   }
 
   Future<List<Topic>> getTopics(int subjectId) async {
@@ -759,6 +798,22 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  Future<String?> updateAdminImage(int id, Uint8List imageBytes, String fileName) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/dashboard/admins/$id/image'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['imagePath'];
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>> getSessions({int page = 1, int limit = 10, String query = '', DateTime? startDate, DateTime? endDate}) async {
     String url = '$baseUrl/sessions?page=$page&limit=$limit&search=$query';
     if (startDate != null) {
@@ -779,5 +834,95 @@ class ApiService {
       };
     }
     return {'sessions': <UserSession>[], 'totalCount': 0};
+  }
+
+  // Notifications
+  Future<Map<String, dynamic>?> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
+  }
+
+  Future<bool> createNotification(String title, String message, String targetType, int? targetGroupId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/notifications'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'title': title,
+        'message': message,
+        'targetType': targetType,
+        'targetGroupId': targetGroupId,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> markAsRead(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> markAllAsRead() async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/read-all'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  // --- Online Meetings ---
+  Future<List<OnlineMeeting>> getOnlineMeetings(int subjectId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/subjects/$subjectId/meetings'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((json) => OnlineMeeting.fromJson(json)).toList();
+    }
+    return [];
+  }
+
+  Future<bool> createOnlineMeeting(int subjectId, String title, String meetingUrl, DateTime startTime) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/subjects/$subjectId/meetings'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'title': title,
+        'meetingUrl': meetingUrl,
+        'startTime': startTime.toIso8601String(),
+      }),
+    );
+    debugPrint('CREATE MEETING RESPONSE: ${response.statusCode} - ${response.body}');
+    return response.statusCode == 200 || response.statusCode == 201;
+  }
+
+  Future<bool> updateOnlineMeeting(int meetingId, String title, String meetingUrl, DateTime startTime) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/subjects/meetings/$meetingId'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'title': title,
+        'meetingUrl': meetingUrl,
+        'startTime': startTime.toIso8601String(),
+      }),
+    );
+    return response.statusCode == 200 || response.statusCode == 204;
+  }
+
+  Future<bool> deleteOnlineMeeting(int meetingId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/subjects/meetings/$meetingId'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 204 || response.statusCode == 200;
   }
 }

@@ -45,6 +45,7 @@ public class Subject
     public User? CreatedBy { get; set; }
     public List<Topic> Topics { get; set; } = new();
     public List<SubjectGroup> SubjectGroups { get; set; } = new();
+    public List<OnlineMeeting> OnlineMeetings { get; set; } = new();
 }
 
 public class SubjectGroup
@@ -197,4 +198,42 @@ public class UserSession
     public string? DeviceInfo { get; set; }
     public string? LocationInfo { get; set; }
     public string? FaceImagePath { get; set; }
+}
+
+public class Notification
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int? SenderId { get; set; }
+    public User? Sender { get; set; }
+    
+    public string TargetType { get; set; } = "All"; // All, Admins, Group
+    public int? TargetGroupId { get; set; }
+    public Group? TargetGroup { get; set; }
+}
+
+public class NotificationRead
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public User? User { get; set; }
+    public int NotificationId { get; set; }
+    public Notification? Notification { get; set; }
+    public DateTime ReadAt { get; set; } = DateTime.UtcNow;
+}
+
+public class OnlineMeeting
+{
+    public int Id { get; set; }
+    public int SubjectId { get; set; }
+    [JsonIgnore]
+    public Subject? Subject { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string MeetingUrl { get; set; } = string.Empty;
+    public DateTime StartTime { get; set; }
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

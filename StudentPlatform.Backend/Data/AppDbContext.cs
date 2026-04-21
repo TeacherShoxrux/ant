@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     public DbSet<Group> Groups { get; set; }
     public DbSet<SubjectGroup> SubjectGroups { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationRead> NotificationReads { get; set; }
+    public DbSet<OnlineMeeting> OnlineMeetings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +51,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>().HasData(
             new User { Id = 1, Username = "admin", PasswordHash = "admin123", FullName = "System Administrator", RoleId = 1 }
         );
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.PhoneNumber)
+            .IsUnique();
+
         modelBuilder.Entity<FaceRecord>().HasOne<User>()
             .WithOne(u => u.FaceRecord)
             .HasForeignKey<FaceRecord>(f => f.UserId);
