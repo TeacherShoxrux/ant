@@ -93,6 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     runSpacing: 16,
                     children: [
                       _buildQuickAction(context, 'Mening fanlarim', Icons.menu_book, '/subjects'),
+                      if (context.read<AuthCubit>().state is AuthAuthenticated && (context.read<AuthCubit>().state as AuthAuthenticated).isAdmin)
+                        _buildQuickAction(context, 'Fan qo\'shish', Icons.add_box_outlined, '/subjects'),
                       _buildQuickAction(context, 'O\'zlashtirish', Icons.bar_chart, '/grades'),
                       _buildQuickAction(context, 'Profil', Icons.person, '/profile'),
                     ].animate(interval: 100.ms).fadeIn(delay: 500.ms).slideX(begin: -0.1),

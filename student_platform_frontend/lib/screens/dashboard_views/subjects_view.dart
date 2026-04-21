@@ -25,7 +25,6 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     super.initState();
     _fetchSubjects();
   }
-// lib/screens/dashboard_views/subjects_view.dart fayliga quyidagi metodni qo'shing
 
   void _addSubjectDialog() {
     final nameController = TextEditingController();
@@ -169,11 +168,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         : _subjects?.where((s) => !s.isDisabled).toList();
 
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (displayedSubjects == null || displayedSubjects.isEmpty) {
-      return const Center(child: Text('Hozircha fanlar mavjud emas.'));
-    }
 
-    // build metodining boshida:
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -212,7 +207,24 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           ),
           const SizedBox(height: 32),
           
-          Expanded(
+          if (displayedSubjects == null || displayedSubjects.isEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Hozircha fanlar mavjud emas.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: MediaQuery.of(context).size.width > 800 ? 350 : 500,
