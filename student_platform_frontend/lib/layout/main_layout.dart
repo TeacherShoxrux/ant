@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../services/api_service.dart';
 import '../logic/auth/auth_cubit.dart';
 import '../logic/auth/auth_state.dart';
 
@@ -65,10 +66,15 @@ class _MainLayoutState extends State<MainLayout> {
                   children: [
                     CircleAvatar(
                       backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
-                      child: Text(
-                        state.fullName[0].toUpperCase(),
-                        style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold),
-                      ),
+                      backgroundImage: state.imagePath != null 
+                        ? NetworkImage('${ApiService.serverUrl}${state.imagePath}') 
+                        : null,
+                      child: state.imagePath == null 
+                        ? Text(
+                            state.fullName[0].toUpperCase(),
+                            style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold),
+                          )
+                        : null,
                     ),
                     if (isDesktop) ...[
                       const SizedBox(width: 12),
@@ -115,7 +121,7 @@ class _MainLayoutState extends State<MainLayout> {
             ),
           const SizedBox(height: 16),
           
-          _buildNavItem(context, 'Biznes boshqaruv', Icons.dashboard_outlined, '/home', currentPath, isDrawer: isDrawer),
+          _buildNavItem(context, 'Asosiy sahifa', Icons.dashboard_outlined, '/home', currentPath, isDrawer: isDrawer),
           _buildNavItem(context, 'Mening fanlarim', Icons.menu_book_outlined, '/subjects', currentPath, isDrawer: isDrawer),
           _buildNavItem(context, 'O\'zlashtirish', Icons.bar_chart_outlined, '/grades', currentPath, isDrawer: isDrawer),
           

@@ -9,6 +9,7 @@ using StudentPlatform.Backend.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace StudentPlatform.Backend.Controllers;
 
@@ -48,7 +49,8 @@ public class AuthController : ControllerBase
             Token = token,
             Username = user.Username,
             FullName = user.FullName,
-            Role = user.Role?.Name ?? "Student"
+            Role = user.Role?.Name ?? "Student",
+            ImagePath = user.ImagePath
         });
     }
 
@@ -98,8 +100,39 @@ public class AuthController : ControllerBase
             Token = token,
             Username = user.Username,
             FullName = user.FullName,
-            Role = user.Role?.Name ?? "Student"
+            Role = user.Role?.Name ?? "Student",
+            ImagePath = user.ImagePath
         });
+    }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<ActionResult> ChangePassword(ChangePasswordDto changePasswordDto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("id") ?? User.FindFirst("sub");
+        if (userIdClaim == null) 
+        {
+            // For debugging, let's see what claims we DO have
+            // var allClaims = string.Join(", ", User.Claims.Select(c => c.Type + "=" + c.Value));
+            return Unauthorized("Foydalanuvchi identifikatori topilmadi.");
+        }
+        
+        var userId = int.Parse(userIdClaim.Value);
+        var user = await _context.Users.FindAsync(userId);
+        
+        if (user == null) return NotFound("Foydalanuvchi topilmadi.");
+        
+        // Trim passwords to avoid whitespace issues
+        var oldPwd = changePasswordDto.OldPassword.Trim();
+        var newPwd = changePasswordDto.NewPassword.Trim();
+
+        if (user.PasswordHash != oldPwd) 
+            return BadRequest("Eski parol noto'g'ri.");
+        
+        user.PasswordHash = newPwd;
+        await _context.SaveChangesAsync();
+        
+        return Ok("Parol muvaffaqiyatli o'zgartirildi.");
     }
 
     [HttpPost("register")]

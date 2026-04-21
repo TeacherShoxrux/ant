@@ -279,7 +279,7 @@ class _QuizScreenState extends State<QuizScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(16),
                                   child: Image.network(
-                                    '${_apiService.baseUrl.replaceAll('/api', '')}${currentQuestion.imagePath}',
+                                    '${ApiService.baseUrl.replaceAll('/api', '')}${currentQuestion.imagePath}',
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     height: 300,

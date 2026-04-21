@@ -3,12 +3,14 @@ class AuthResponse {
   final String username;
   final String fullName;
   final String role;
+  final String? imagePath;
 
   AuthResponse({
     required this.token,
     required this.username,
     required this.fullName,
     required this.role,
+    this.imagePath,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class AuthResponse {
       username: json['username'],
       fullName: json['fullName'],
       role: json['role'],
+      imagePath: json['imagePath'],
     );
   }
 }

@@ -441,7 +441,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                         height: 250,
                                         color: Colors.grey.shade100,
                                         child: Image.network(
-                                          '${_apiService.baseUrl.replaceAll('/api', '')}${q.imagePath?.startsWith('/') == true ? q.imagePath : '/$q.imagePath'}',
+                                          '${ApiService.serverUrl}${q.imagePath?.startsWith('/') == true ? q.imagePath : '/$q.imagePath'}',
                                           fit: BoxFit.cover,
                                           errorBuilder: (ctx, _, __) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
                                         ),
@@ -560,7 +560,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                               ClipRRect(
                                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
                                 child: Image.network(
-                                  '${_apiService.baseUrl.replaceAll('/api', '')}${q.imagePath?.startsWith('/') == true ? q.imagePath : '/$q.imagePath'}',
+                                  '${ApiService.serverUrl}${q.imagePath?.startsWith('/') == true ? q.imagePath : '/$q.imagePath'}',
                                   width: 150,
                                   height: 150,
                                   fit: BoxFit.cover,
@@ -599,12 +599,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                           child: const Text('Testni boshlash'),
                                         ),
                                         const SizedBox(width: 12),
-                                        OutlinedButton.icon(
-                                          onPressed: () => _showQuizDetailsDialog(q),
-                                          icon: const Icon(Icons.quiz_outlined),
-                                          label: const Text('Test savollarni ko\'rish'),
-                                          style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.indigo)),
-                                        ),
+                                        if (isAdmin)
+                                          OutlinedButton.icon(
+                                            onPressed: () => _showQuizDetailsDialog(q),
+                                            icon: const Icon(Icons.quiz_outlined),
+                                            label: const Text('Test savollarni ko\'rish'),
+                                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.indigo)),
+                                          ),
                                         if (isAdmin) ...[
                                           const SizedBox(width: 8),
                                           IconButton(

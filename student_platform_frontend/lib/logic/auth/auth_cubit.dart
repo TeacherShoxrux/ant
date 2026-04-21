@@ -18,6 +18,7 @@ class AuthCubit extends Cubit<AuthState> {
       final role = prefs.getString('role');
       final fullName = prefs.getString('fullName');
       final username = prefs.getString('username');
+      final imagePath = prefs.getString('imagePath');
 
       if (token != null && role != null && fullName != null && username != null) {
         emit(AuthAuthenticated(
@@ -25,6 +26,7 @@ class AuthCubit extends Cubit<AuthState> {
           role: role,
           fullName: fullName,
           username: username,
+          imagePath: imagePath,
         ));
       } else {
         emit(AuthUnauthenticated());
@@ -48,6 +50,7 @@ class AuthCubit extends Cubit<AuthState> {
           role: response.role,
           fullName: response.fullName,
           username: response.username,
+          imagePath: response.imagePath,
         ));
         return true;
       } else {
@@ -70,6 +73,7 @@ class AuthCubit extends Cubit<AuthState> {
           role: response.role,
           fullName: response.fullName,
           username: response.username,
+          imagePath: response.imagePath,
         ));
         return true;
       } else {

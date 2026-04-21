@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  final String baseUrl = "http://localhost:5297/api";
+  static const String baseUrl = "http://localhost:5297/api";
+  static const String serverUrl = "http://localhost:5297";
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -35,6 +36,9 @@ class ApiService {
       await prefs.setString('role', authResponse.role);
       await prefs.setString('fullName', authResponse.fullName);
       await prefs.setString('username', authResponse.username);
+      if (authResponse.imagePath != null) {
+        await prefs.setString('imagePath', authResponse.imagePath!);
+      }
       return authResponse;
     }
     return null;
@@ -55,6 +59,9 @@ class ApiService {
       await prefs.setString('role', authResponse.role);
       await prefs.setString('fullName', authResponse.fullName);
       await prefs.setString('username', authResponse.username);
+      if (authResponse.imagePath != null) {
+        await prefs.setString('imagePath', authResponse.imagePath!);
+      }
       return authResponse;
     }
     return null;
@@ -71,6 +78,23 @@ class ApiService {
       }),
     );
     return response.statusCode == 200;
+  }
+
+  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/change-password'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      }),
+    );
+    
+    if (response.statusCode == 200) {
+      return {'success': true, 'message': 'Parol muvaffaqiyatli o\'zgartirildi.'};
+    } else {
+      return {'success': false, 'message': response.body.isNotEmpty ? response.body : 'Xatolik yuz berdi.'};
+    }
   }
 
   Future<List<Subject>> getSubjects() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/auth/auth_cubit.dart';
+import '../../services/api_service.dart';
 import '../../logic/auth/auth_state.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -42,10 +43,12 @@ class ProfileScreen extends StatelessWidget {
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: const Color(0xFF1E3A8A),
-                          child: Text(
-                            state.fullName[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
+                          backgroundImage: state.imagePath != null 
+                            ? NetworkImage('${ApiService.serverUrl}${state.imagePath}') 
+                            : null,
+                          child: state.imagePath == null 
+                            ? const Icon(Icons.person_outline, size: 50, color: Colors.white)
+                            : null,
                         ).animate().scale(delay: 200.ms),
                         const SizedBox(width: 32),
                         
@@ -82,6 +85,11 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ).animate().fadeIn(delay: 100.ms),
+                
+                if (state.isAdmin) ...[
+                  const SizedBox(height: 32),
+                  const _ChangePasswordWidget(),
+                ],
                 
                 const SizedBox(height: 32),
                 
@@ -129,6 +137,145 @@ class ProfileScreen extends StatelessWidget {
           ],
         )
       ],
+    );
+  }
+}
+
+class _ChangePasswordWidget extends StatefulWidget {
+  const _ChangePasswordWidget();
+
+  @override
+  State<_ChangePasswordWidget> createState() => _ChangePasswordWidgetState();
+}
+
+class _ChangePasswordWidgetState extends State<_ChangePasswordWidget> {
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _apiService = ApiService();
+  bool _isLoading = false;
+  bool _isExpanded = false;
+
+  Future<void> _changePassword() async {
+    final oldPwd = _oldPasswordController.text.trim();
+    final newPwd = _newPasswordController.text.trim();
+    final confirmPwd = _confirmPasswordController.text.trim();
+
+    if (oldPwd.isEmpty || newPwd.isEmpty || confirmPwd.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Barcha maydonlarni to\'ldiring')));
+      return;
+    }
+
+    if (newPwd != confirmPwd) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yangi parollar mos kelmadi')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final result = await _apiService.changePassword(oldPwd, newPwd);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: result['success'] ? Colors.green : Colors.red,
+          ),
+        );
+        if (result['success']) {
+          _oldPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+          setState(() => _isExpanded = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tizim xatoligi yuz berdi'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isExpanded) {
+      return OutlinedButton.icon(
+        onPressed: () => setState(() => _isExpanded = true),
+        icon: const Icon(Icons.lock_reset),
+        label: const Text('Parolni o\'zgartirish'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Parolni o\'zgartirish',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isExpanded = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _oldPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Eski parol',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Yangi parol',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.vpn_key_outlined),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Yangi parolni tasdiqlang',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.check_circle_outline),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _changePassword,
+                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Parolni saqlash'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

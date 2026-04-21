@@ -25,12 +25,33 @@ public class QuizzesController : ControllerBase
     [HttpGet("topic/{topicId}")]
     public async Task<ActionResult> GetQuizzesByTopic(int topicId)
     {
-        var quizzes = await _context.Quizzes
-            .Where(q => q.TopicId == topicId)
-            .Include(q => q.Questions)
-                .ThenInclude(qs => qs.Options)
-            .ToListAsync();
-        return Ok(quizzes);
+        bool isAdmin = User.IsInRole("Admin");
+
+        var query = _context.Quizzes.Where(q => q.TopicId == topicId);
+
+        if (isAdmin)
+        {
+            var quizzes = await query
+                .Include(q => q.Questions)
+                    .ThenInclude(qs => qs.Options)
+                .ToListAsync();
+            return Ok(quizzes);
+        }
+        else 
+        {
+            // For students, only return quiz metadata. They shouldn't see questions/options in the list.
+            var quizzes = await query
+                .Select(q => new {
+                    q.Id,
+                    q.TopicId,
+                    q.Title,
+                    q.Content,
+                    q.TimeLimitMinutes,
+                    q.ImagePath
+                })
+                .ToListAsync();
+            return Ok(quizzes);
+        }
     }
 
     [HttpPost]
@@ -172,6 +193,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpGet("{quizId}/questions")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> GetQuizQuestions(int quizId)
     {
         var questions = await _context.TestQuestions

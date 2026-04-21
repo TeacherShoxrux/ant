@@ -16,18 +16,20 @@ class AuthAuthenticated extends AuthState {
   final String role;
   final String fullName;
   final String username;
+  final String? imagePath;
 
   const AuthAuthenticated({
     required this.token,
     required this.role,
     required this.fullName,
     required this.username,
+    this.imagePath,
   });
 
   bool get isAdmin => role == 'Admin';
 
   @override
-  List<Object?> get props => [token, role, fullName, username];
+  List<Object?> get props => [token, role, fullName, username, imagePath];
 }
 
 class AuthUnauthenticated extends AuthState {}
