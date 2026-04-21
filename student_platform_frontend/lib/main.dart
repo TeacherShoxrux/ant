@@ -11,7 +11,10 @@ import 'screens/home_screen.dart';
 import 'screens/dashboard_views/subjects_view.dart';
 import 'screens/dashboard_views/grades_view.dart';
 import 'screens/dashboard_views/students_view.dart';
+import 'screens/dashboard_views/admins_view.dart';
 import 'screens/dashboard_views/profile_view.dart';
+import 'screens/dashboard_views/sessions_view.dart';
+import 'screens/welcome_screen.dart';
 
 void main() {
   runApp(
@@ -42,23 +45,30 @@ class _StudentPlatformAppState extends State<StudentPlatformApp> {
 
   GoRouter _createRouter(AuthCubit authCubit) {
     return GoRouter(
-      initialLocation: '/home',
+      initialLocation: '/',
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
       redirect: (context, state) {
         final authState = authCubit.state;
         final isLoggingIn = state.uri.toString() == '/login';
+        final isWelcome = state.uri.toString() == '/';
 
         if (authState is AuthInitial || authState is AuthLoading) {
-          // You might prefer to show a splash screen here, but we pass through for now
-          // to let GoRouter handle it or fall back to login
+          // Pass through
         } else if (authState is AuthUnauthenticated) {
-          if (!isLoggingIn) return '/login';
+          if (!isLoggingIn && !isWelcome) return '/';
         } else if (authState is AuthAuthenticated) {
-          if (isLoggingIn) return '/home';
+          if (isLoggingIn || isWelcome) return '/home';
+          if (state.uri.toString() == '/admins' && !authState.isSuperAdmin) {
+            return '/home';
+          }
         }
         return null;
       },
       routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const WelcomeScreen(),
+        ),
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
@@ -85,6 +95,14 @@ class _StudentPlatformAppState extends State<StudentPlatformApp> {
               builder: (context, state) => const StudentsScreen(),
             ),
             GoRoute(
+              path: '/admins',
+              builder: (context, state) => const AdminsScreen(),
+            ),
+            GoRoute(
+              path: '/sessions',
+              builder: (context, state) => const SessionsView(),
+            ),
+            GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
             ),
@@ -97,7 +115,7 @@ class _StudentPlatformAppState extends State<StudentPlatformApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'HEMIS Platform (Student)',
+      title: 'Interfeys - masofaviy ta\'lim platformasi',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

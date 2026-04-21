@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using StudentPlatform.Backend.Data;
 using StudentPlatform.Backend.DTOs;
 using StudentPlatform.Backend.Models;
-
+using System.Security.Claims;
 namespace StudentPlatform.Backend.Controllers;
 
 [Route("api/[controller]")]
@@ -31,7 +31,8 @@ public class TopicsController : ControllerBase
                 SubjectId = t.SubjectId,
                 Title = t.Title,
                 Content = t.Content,
-                IsDisabled = t.IsDisabled
+                IsDisabled = t.IsDisabled,
+                CreatedByName = t.CreatedBy != null ? t.CreatedBy.FullName : null
             })
             .ToListAsync();
         return Ok(topics);
@@ -41,9 +42,14 @@ public class TopicsController : ControllerBase
     public async Task<ActionResult<Topic>> GetTopic(int id)
     {
         var topic = await _context.Topics
+            .Include(t => t.CreatedBy)
             .Include(t => t.Videos)
+                .ThenInclude(v => v.CreatedBy)
             .Include(t => t.Documents)
             .Include(t => t.Assignments)
+                .ThenInclude(a => a.CreatedBy)
+            .Include(t => t.Quizzes)
+                .ThenInclude(q => q.CreatedBy)
             .Include(t => t.Quizzes)
                 .ThenInclude(q => q.Questions)
                     .ThenInclude(qs => qs.Options)
@@ -54,14 +60,16 @@ public class TopicsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<ActionResult<Topic>> CreateTopic(TopicDto topicDto)
     {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var topic = new Topic
         {
             SubjectId = topicDto.SubjectId,
             Title = topicDto.Title,
-            Content = topicDto.Content
+            Content = topicDto.Content,
+            CreatedById = currentUserId
         };
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync();
@@ -70,7 +78,7 @@ public class TopicsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> UpdateTopic(int id, UpdateTopicDto updateDto)
     {
         var topic = await _context.Topics.FindAsync(id);
@@ -85,7 +93,7 @@ public class TopicsController : ControllerBase
     }
 
     [HttpPatch("{id}/toggle-status")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> ToggleTopicStatus(int id)
     {
         var topic = await _context.Topics.FindAsync(id);
@@ -98,14 +106,16 @@ public class TopicsController : ControllerBase
     }
 
     [HttpPost("{topicId}/videos")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> AddVideo(int topicId, TopicVideoDto videoDto)
     {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var video = new TopicVideo
         {
             TopicId = topicId,
             Title = videoDto.Title,
-            YoutubeUrl = videoDto.YoutubeUrl
+            YoutubeUrl = videoDto.YoutubeUrl,
+            CreatedById = currentUserId
         };
 
         _context.TopicVideos.Add(video);
@@ -115,7 +125,7 @@ public class TopicsController : ControllerBase
     }
 
     [HttpPost("{topicId}/documents")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> UploadDocument(int topicId, [FromForm] string title, IFormFile file)
     {
         if (file == null || file.Length == 0) return BadRequest("File is empty.");
@@ -146,7 +156,7 @@ public class TopicsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> DeleteTopic(int id)
     {
         var topic = await _context.Topics.FindAsync(id);

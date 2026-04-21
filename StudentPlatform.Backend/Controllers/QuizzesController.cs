@@ -32,6 +32,7 @@ public class QuizzesController : ControllerBase
         if (isAdmin)
         {
             var quizzes = await query
+                .Include(q => q.CreatedBy)
                 .Include(q => q.Questions)
                     .ThenInclude(qs => qs.Options)
                 .ToListAsync();
@@ -39,15 +40,17 @@ public class QuizzesController : ControllerBase
         }
         else 
         {
-            // For students, only return quiz metadata. They shouldn't see questions/options in the list.
+            // For students, only return quiz metadata.
             var quizzes = await query
+                .Include(q => q.CreatedBy)
                 .Select(q => new {
                     q.Id,
                     q.TopicId,
                     q.Title,
                     q.Content,
                     q.TimeLimitMinutes,
-                    q.ImagePath
+                    q.ImagePath,
+                    CreatedByName = q.CreatedBy != null ? q.CreatedBy.FullName : null
                 })
                 .ToListAsync();
             return Ok(quizzes);
@@ -55,10 +58,12 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> CreateQuiz([FromForm] int topicId, [FromForm] string title, [FromForm] string content, [FromForm] int timeLimitMinutes, IFormFile? image)
     {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string? imagePath = null;
+        // ... (rest of image logic remains same)
         if (image != null && image.Length > 0)
         {
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads", "quizzes");
@@ -80,7 +85,8 @@ public class QuizzesController : ControllerBase
             Title = title,
             Content = content,
             TimeLimitMinutes = timeLimitMinutes,
-            ImagePath = imagePath
+            ImagePath = imagePath,
+            CreatedById = currentUserId
         };
 
         _context.Quizzes.Add(quiz);
@@ -154,7 +160,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpPost("{quizId}/questions")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> AddQuestion(int quizId, [FromForm] string title, [FromForm] string question, [FromForm] string optionsJson, IFormFile? image)
     {
         string? imagePath = null;
@@ -193,7 +199,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpGet("{quizId}/questions")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public async Task<ActionResult> GetQuizQuestions(int quizId)
     {
         var questions = await _context.TestQuestions

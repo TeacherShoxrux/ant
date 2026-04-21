@@ -18,6 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IFaceEmbeddingCache, FaceEmbeddingCache>();
 builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
+builder.Services.AddHostedService<StudentPlatform.Backend.Services.SessionCleanupService>();
 
 // CORS
 builder.Services.AddCors(options =>

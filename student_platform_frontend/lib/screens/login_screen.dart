@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isAdminMode = false;
   bool _isCameraReady = false;
   bool _isProcessingFace = false;
+  bool _isPasswordVisible = false;
   
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
@@ -146,11 +147,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             .animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
                         const SizedBox(height: 24),
                         const Text(
-                          'HEMIS PLATFORMA',
+                          'INTERFEYS',
                           style: TextStyle(fontSize: 42, color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2),
                         ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
                         const Text(
-                          'Zamonaviy Ta\'lim Boshqaruv Tizimi',
+                          'Masofaviy ta\'lim platformasi',
                           style: TextStyle(fontSize: 18, color: Colors.white70),
                         ).animate().fadeIn(delay: 500.ms),
                       ],
@@ -234,6 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Text('Face ID orqali kirish'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFF1E3A8A).withOpacity(0.6),
+                              disabledForegroundColor: Colors.white70,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                             ),
                           ),
@@ -258,9 +262,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: InputDecoration(
                                   labelText: 'Parol',
                                   prefixIcon: const Icon(Icons.lock),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isPasswordVisible = !_isPasswordVisible;
+                                      });
+                                    },
+                                  ),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
-                                obscureText: true,
+                                obscureText: !_isPasswordVisible,
                               ),
                               const SizedBox(height: 40),
                               SizedBox(
@@ -268,7 +280,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 56,
                                 child: ElevatedButton(
                                   onPressed: _adminLogin,
-                                  child: const Text('Admin bo\'lib kirish', style: TextStyle(fontSize: 18)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1E3A8A),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 4,
+                                    shadowColor: const Color(0xFF1E3A8A).withOpacity(0.4),
+                                  ),
+                                  child: const Text('Admin bo\'lib kirish', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                             ],
@@ -296,6 +315,34 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onPressed;
+  const _AnimatedButton({required this.child, required this.onPressed});
+
+  @override
+  State<_AnimatedButton> createState() => _AnimatedButtonState();
+}
+
+class _AnimatedButtonState extends State<_AnimatedButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onPressed,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: widget.child,
       ),
     );
   }

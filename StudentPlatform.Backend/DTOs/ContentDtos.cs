@@ -22,6 +22,7 @@ public class TopicDto
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public bool IsDisabled { get; set; } = false;
+    public string? CreatedByName { get; set; }
 }
 
 public class UpdateTopicDto

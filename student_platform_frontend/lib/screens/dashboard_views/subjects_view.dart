@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../logic/auth/auth_state.dart';
+import '../../widgets/responsive_dialog.dart';
 
 class SubjectsScreen extends StatefulWidget {
   const SubjectsScreen({super.key});
@@ -32,8 +33,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Yangi fan qo\'shish'),
+      builder: (context) => ResponsiveDialog(
+        title: 'Yangi fan qo\'shish',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -101,8 +102,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fanni tahrirlash'),
+      builder: (context) => ResponsiveDialog(
+        title: 'Fanni tahrirlash',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -136,8 +137,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   void _confirmDeleteSubject(Subject subject) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Diqqat!'),
+      builder: (ctx) => ResponsiveDialog(
+        title: 'Diqqat!',
         content: Text('Siz rostdan ham "${subject.name}" fanini o\'chirmoqchimisiz? Barcha biriktirilgan materiallar o\'chib ketadi!'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Yo\'q')),
@@ -150,10 +151,69 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 _fetchSubjects();
               }
             },
-            child: const Text('Ha, O\'chirish'),
+            child: const Text('Ha, O\'chirish', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
+    );
+  }
+
+  void _attachSubjectGroupsDialog(Subject subject) async {
+    final groupsMap = await _apiService.getGroups();
+    final attachedGroupIdsList = await _apiService.getSubjectGroups(subject.id);
+    
+    Set<int> selectedIds = attachedGroupIdsList.toSet();
+
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => ResponsiveDialog(
+          title: '${subject.name} - Guruhlarga biriktirish',
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: groupsMap.isEmpty 
+              ? const Center(child: Text('Guruhlar topilmadi.'))
+              : ListView.builder(
+              shrinkWrap: true,
+              itemCount: groupsMap.length,
+              itemBuilder: (context, index) {
+                final g = groupsMap[index];
+                return CheckboxListTile(
+                  title: Text(g['name']),
+                  value: selectedIds.contains(g['id']),
+                  onChanged: (val) {
+                    setDialogState(() {
+                      if (val == true) selectedIds.add(g['id']);
+                      else selectedIds.remove(g['id']);
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Bekor qilish'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final ok = await _apiService.attachSubjectToGroups(subject.id, selectedIds.toList());
+                if (ok && mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Muvaffaqiyatli saqlandi')));
+                } else if (mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik (yoki huquq yetarli emas)')));
+                }
+              },
+              child: const Text('Saqlash'),
+            ),
+          ],
+        )
+      )
     );
   }
 
@@ -286,6 +346,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                       icon: const Icon(Icons.more_vert, color: Colors.grey),
                       onSelected: (val) async {
                         if (val == 'edit') _editSubjectDialog(subject);
+                        else if (val == 'groups') _attachSubjectGroupsDialog(subject);
                         else if (val == 'toggle') {
                           await _apiService.toggleSubjectStatus(subject.id);
                           _fetchSubjects();
@@ -293,6 +354,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         else if (val == 'delete') _confirmDeleteSubject(subject);
                       },
                       itemBuilder: (ctx) => [
+                        const PopupMenuItem(value: 'groups', child: Row(children: [Icon(Icons.group, size: 18, color: Colors.indigo), SizedBox(width: 8), Text('Guruhlarga biriktirish')])),
                         const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18, color: Colors.blue), SizedBox(width: 8), Text('Tahrirlash')])),
                         PopupMenuItem(value: 'toggle', child: Row(children: [Icon(isDisabled ? Icons.visibility : Icons.visibility_off, size: 18, color: Colors.orange), SizedBox(width: 8), Text(isDisabled ? 'Faollashtirish' : 'Faolsizlashtirish')])),
                         const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text('O\'chirish', style: TextStyle(color: Colors.red))])),

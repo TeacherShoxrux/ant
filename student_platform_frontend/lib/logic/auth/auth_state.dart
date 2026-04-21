@@ -26,7 +26,8 @@ class AuthAuthenticated extends AuthState {
     this.imagePath,
   });
 
-  bool get isAdmin => role == 'Admin';
+  bool get isAdmin => role == 'Admin' || role == 'Moderator';
+  bool get isSuperAdmin => role == 'Admin';
 
   @override
   List<Object?> get props => [token, role, fullName, username, imagePath];

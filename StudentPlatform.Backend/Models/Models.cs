@@ -41,7 +41,21 @@ public class Subject
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsDisabled { get; set; } = false;
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
     public List<Topic> Topics { get; set; } = new();
+    public List<SubjectGroup> SubjectGroups { get; set; } = new();
+}
+
+public class SubjectGroup
+{
+    public int SubjectId { get; set; }
+    [JsonIgnore]
+    public Subject? Subject { get; set; }
+    
+    public int GroupId { get; set; }
+    [JsonIgnore]
+    public Group? Group { get; set; }
 }
 
 public class Topic
@@ -56,6 +70,8 @@ public class Topic
     public List<Assignment> Assignments { get; set; } = new();
     public List<TopicDocument> Documents { get; set; } = new();
     public List<TopicVideo> Videos { get; set; } = new();
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
 }
 
 public class TopicVideo
@@ -66,6 +82,8 @@ public class TopicVideo
     public Topic? Topic { get; set; }
     public string Title { get; set; } = string.Empty;
     public string YoutubeUrl { get; set; } = string.Empty;
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
 }
 
 public class TopicDocument
@@ -91,6 +109,8 @@ public class TopicQuiz
     public string? ImagePath { get; set; }
     
     public List<TestQuestion> Questions { get; set; } = new();
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
 }
 
 public class TestQuestion
@@ -131,6 +151,8 @@ public class Assignment
     public int MaxScore { get; set; }
     public DateTime? Deadline { get; set; }
     public string? FilePath { get; set; } // Path to the task file uploaded by admin
+    public int? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
 }
 
 public class AssignmentSubmission
@@ -143,9 +165,11 @@ public class AssignmentSubmission
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
     public int? Grade { get; set; }
     public string? Feedback { get; set; }
+    public int? GradedById { get; set; }
     
     public User? Student { get; set; }
     public Assignment? Assignment { get; set; }
+    public User? GradedBy { get; set; }
 }
 
 public class TestResult
@@ -159,4 +183,18 @@ public class TestResult
     
     public User? Student { get; set; }
     public TopicQuiz? Quiz { get; set; }
+}
+
+public class UserSession
+{
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+    [JsonIgnore]
+    public User? Student { get; set; }
+    
+    public DateTime LoginTime { get; set; } = DateTime.UtcNow;
+    public string? IpAddress { get; set; }
+    public string? DeviceInfo { get; set; }
+    public string? LocationInfo { get; set; }
+    public string? FaceImagePath { get; set; }
 }

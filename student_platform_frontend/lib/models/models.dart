@@ -57,6 +57,7 @@ class Topic {
   final List<Assignment> assignments;
   final List<TopicDocument> documents;
   final List<TopicVideo> videos;
+  final String? createdByName;
 
   Topic({
     required this.id,
@@ -68,6 +69,7 @@ class Topic {
     this.assignments = const [],
     this.documents = const [],
     this.videos = const [],
+    this.createdByName,
   });
 
   factory Topic.fromJson(Map<String, dynamic> json) {
@@ -91,6 +93,7 @@ class Topic {
               ?.map((v) => TopicVideo.fromJson(v))
               .toList() ??
           [],
+      createdByName: json['createdByName'] ?? json['createdBy']?['fullName'],
     );
   }
 }
@@ -100,12 +103,14 @@ class TopicVideo {
   final int topicId;
   final String title;
   final String youtubeUrl;
+  final String? createdByName;
 
   TopicVideo({
     required this.id,
     required this.topicId,
     required this.title,
     required this.youtubeUrl,
+    this.createdByName,
   });
 
   factory TopicVideo.fromJson(Map<String, dynamic> json) {
@@ -114,6 +119,7 @@ class TopicVideo {
       topicId: json['topicId'],
       title: json['title'] ?? '',
       youtubeUrl: json['youtubeUrl'] ?? '',
+      createdByName: json['createdBy']?['fullName'],
     );
   }
 }
@@ -152,6 +158,7 @@ class TopicQuiz {
   final int timeLimitMinutes;
   final String? imagePath;
   final List<TestQuestion> questions;
+  final String? createdByName;
 
   TopicQuiz({
     required this.id,
@@ -161,6 +168,7 @@ class TopicQuiz {
     required this.timeLimitMinutes,
     this.imagePath,
     this.questions = const [],
+    this.createdByName,
   });
 
   factory TopicQuiz.fromJson(Map<String, dynamic> json) {
@@ -174,6 +182,7 @@ class TopicQuiz {
       questions: json['questions'] != null
           ? (json['questions'] as List).map((i) => TestQuestion.fromJson(i)).toList()
           : [],
+      createdByName: json['createdByName'] ?? json['createdBy']?['fullName'],
     );
   }
 }
@@ -242,6 +251,8 @@ class Assignment {
   final String? filePath;
   final bool isSubmitted;
   final int? grade;
+  final String? gradedByName;
+  final String? createdByName;
 
   Assignment({
     required this.id,
@@ -253,6 +264,8 @@ class Assignment {
     this.filePath,
     this.isSubmitted = false,
     this.grade,
+    this.gradedByName,
+    this.createdByName,
   });
 
   factory Assignment.fromJson(Map<String, dynamic> json) {
@@ -266,41 +279,49 @@ class Assignment {
       filePath: json['filePath'],
       isSubmitted: json['isSubmitted'] ?? false,
       grade: json['grade'],
+      gradedByName: json['gradedByName'],
+      createdByName: json['createdByName'],
     );
   }
 }
 
 class Submission {
   final int id;
-  final String assignmentTitle;
+  final String? assignmentTitle;
+  final int? assignmentMaxScore;
   final String studentName;
   final String? studentComment;
   final String filePath;
   final DateTime submittedAt;
   final int? grade;
   final String? feedback;
+  final String? gradedByName;
 
   Submission({
     required this.id,
     required this.assignmentTitle,
+    this.assignmentMaxScore,
     required this.studentName,
     this.studentComment,
     required this.filePath,
     required this.submittedAt,
     this.grade,
     this.feedback,
+    this.gradedByName,
   });
 
   factory Submission.fromJson(Map<String, dynamic> json) {
     return Submission(
       id: json['id'],
       assignmentTitle: json['assignment']?['title'] ?? 'Vazifa',
+      assignmentMaxScore: json['assignment']?['maxScore'],
       studentName: json['student']?['fullName'] ?? 'Talaba',
       studentComment: json['studentComment'],
       filePath: json['filePath'],
       submittedAt: DateTime.parse(json['submittedAt'] ?? DateTime.now().toIso8601String()),
       grade: json['grade'],
       feedback: json['feedback'],
+      gradedByName: json['gradedBy']?['fullName'],
     );
   }
 }
@@ -324,6 +345,50 @@ class QuizResult {
       score: json['score'] ?? 0,
       totalQuestions: json['totalQuestions'] ?? 0,
       takenAt: DateTime.parse(json['takenAt'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+}
+
+class UserSession {
+  final int id;
+  final int studentId;
+  final String studentName;
+  final String username;
+  final String phone;
+  final String roleName;
+  final DateTime loginTime;
+  final String? ipAddress;
+  final String? deviceInfo;
+  final String? locationInfo;
+  final String? faceImagePath;
+
+  UserSession({
+    required this.id,
+    required this.studentId,
+    required this.studentName,
+    required this.username,
+    required this.phone,
+    required this.roleName,
+    required this.loginTime,
+    this.ipAddress,
+    this.deviceInfo,
+    this.locationInfo,
+    this.faceImagePath,
+  });
+
+  factory UserSession.fromJson(Map<String, dynamic> json) {
+    return UserSession(
+      id: json['id'],
+      studentId: json['studentId'],
+      studentName: json['studentName'] ?? 'Noma\'lum',
+      username: json['username'] ?? 'Noma\'lum',
+      phone: json['phone'] ?? 'Kiritilmagan',
+      roleName: json['roleName'] ?? 'Foydalanuvchi',
+      loginTime: DateTime.parse(json['loginTime']),
+      ipAddress: json['ipAddress'],
+      deviceInfo: json['deviceInfo'],
+      locationInfo: json['locationInfo'],
+      faceImagePath: json['faceImagePath'],
     );
   }
 }

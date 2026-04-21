@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'package:universal_html/html.dart' as html;
 
 class ApiService {
   static const String baseUrl = "http://localhost:5297/api";
@@ -208,6 +210,26 @@ class ApiService {
     return response.statusCode == 204;
   }
 
+  Future<List<int>> getSubjectGroups(int subjectId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/subjects/$subjectId/groups'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return List<int>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  Future<bool> attachSubjectToGroups(int subjectId, List<int> groupIds) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/subjects/$subjectId/groups'),
+      headers: await _getHeaders(),
+      body: jsonEncode(groupIds),
+    );
+    return response.statusCode == 200;
+  }
+
   Future<bool> createTopic(int subjectId, String title, String content) async {
     final response = await http.post(
       Uri.parse('$baseUrl/topics'),
@@ -311,6 +333,47 @@ class ApiService {
 
     final response = await request.send();
     return response.statusCode == 200;
+  }
+
+  Future<Map<String, dynamic>> updateAssignment({
+    required int id,
+    required String title,
+    required String description,
+    required int maxScore,
+    DateTime? deadline,
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
+    debugPrint("UPDATING ASSIGNMENT: $id");
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/assignments/update/$id'));
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['title'] = title;
+    request.fields['description'] = description;
+    request.fields['maxScore'] = maxScore.toString();
+    if (deadline != null) {
+      // Use a format that is more likely to be parsed by ASP.NET Core consistently
+      request.fields['deadline'] = deadline.toIso8601String();
+    }
+
+    if (fileBytes != null && fileName != null) {
+      request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
+    }
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      debugPrint("SERVER RESPONSE (Assignment Update): ${response.statusCode} - ${response.body}");
+      
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': response.body.isNotEmpty ? response.body : 'Server xatosi: ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Tarmoq xatosi: $e'};
+    }
   }
 
   Future<bool> submitAssignment({
@@ -454,9 +517,29 @@ class ApiService {
     return {};
   }
 
-  Future<List<Map<String, dynamic>>> getStudents() async {
+  Future<Map<String, dynamic>> getStudents({int pageNumber = 1, int pageSize = 10, String? searchTerm, int? groupId}) async {
+    final queryParams = {
+      'pageNumber': pageNumber.toString(),
+      'pageSize': pageSize.toString(),
+    };
+    if (searchTerm != null && searchTerm.isNotEmpty) queryParams['searchTerm'] = searchTerm;
+    if (groupId != null) queryParams['groupId'] = groupId.toString();
+
+    final uri = Uri.parse('$baseUrl/dashboard/students').replace(queryParameters: queryParams);
+    
     final response = await http.get(
-      Uri.parse('$baseUrl/dashboard/students'),
+      uri,
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {'items': [], 'totalCount': 0, 'totalPages': 0};
+  }
+
+  Future<List<Map<String, dynamic>>> getSubjectGrades(int subjectId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/grades/$subjectId'),
       headers: await _getHeaders(),
     );
     if (response.statusCode == 200) {
@@ -465,9 +548,9 @@ class ApiService {
     return [];
   }
 
-  Future<List<Map<String, dynamic>>> getSubjectGrades(int subjectId) async {
+  Future<List<Map<String, dynamic>>> getTopicGradesAdmin(int topicId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/dashboard/grades/$subjectId'),
+      Uri.parse('$baseUrl/dashboard/grades/topic/$topicId'),
       headers: await _getHeaders(),
     );
     if (response.statusCode == 200) {
@@ -485,6 +568,30 @@ class ApiService {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     }
     return [];
+  }
+
+  Future<void> downloadExcelReport(int subjectId, int groupId, String subjectName) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard/reports/excel?subjectId=$subjectId&groupId=$groupId'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final blob = html.Blob([response.bodyBytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.document.createElement('a') as html.AnchorElement
+        ..href = url
+        ..style.display = 'none'
+        ..download = 'Hisobot_${subjectName.replaceAll(" ", "_")}.xlsx';
+      
+      html.document.body!.children.add(anchor);
+      anchor.click();
+      
+      html.document.body!.children.remove(anchor);
+      html.Url.revokeObjectUrl(url);
+    } else {
+      throw Exception('Hisobotni yuklashda xatolik yuz berdi');
+    }
   }
 
   Future<Map<String, dynamic>?> createGroup(String name) async {
@@ -570,5 +677,107 @@ class ApiService {
       headers: await _getHeaders(),
     );
     return response.statusCode == 204;
+  }
+
+  // Admins
+  Future<List<Map<String, dynamic>>> getAdmins({String? searchTerm}) async {
+    final queryParams = <String, String>{};
+    if (searchTerm != null && searchTerm.isNotEmpty) queryParams['searchTerm'] = searchTerm;
+
+    final uri = Uri.parse('$baseUrl/dashboard/admins').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  Future<bool> createAdmin({
+    required String fullName,
+    required String username,
+    required String password,
+    String? phoneNumber,
+    int roleId = 1,
+    Uint8List? imageBytes,
+    String? imageName,
+  }) async {
+    final token = await _getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/dashboard/admins'));
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['fullName'] = fullName;
+    request.fields['username'] = username;
+    request.fields['password'] = password;
+    request.fields['roleId'] = roleId.toString();
+    if (phoneNumber != null) request.fields['phoneNumber'] = phoneNumber;
+
+    if (imageBytes != null && imageName != null) {
+      request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: imageName));
+    }
+
+    final response = await request.send();
+    return response.statusCode == 200;
+  }
+
+  Future<bool> changeAdminRole(int id, int roleId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/dashboard/admins/$id/change-role'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'roleId': roleId}),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> toggleAdminStatus(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/dashboard/admins/$id/toggle-status'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> deleteAdmin(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/dashboard/admins/$id'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 204;
+  }
+
+  Future<bool> resetAdminPassword(int id, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/dashboard/admins/$id/reset-password'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'newPassword': newPassword,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<Map<String, dynamic>> getSessions({int page = 1, int limit = 10, String query = '', DateTime? startDate, DateTime? endDate}) async {
+    String url = '$baseUrl/sessions?page=$page&limit=$limit&search=$query';
+    if (startDate != null) {
+      url += '&startDate=${startDate.toIso8601String()}';
+    }
+    if (endDate != null) {
+      url += '&endDate=${endDate.toIso8601String()}';
+    }
+    
+    final uri = Uri.parse(url);
+    final response = await http.get(uri, headers: await _getHeaders());
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final List sessions = json['sessions'];
+      return {
+        'sessions': sessions.map((s) => UserSession.fromJson(s)).toList(),
+        'totalCount': json['totalCount'],
+      };
+    }
+    return {'sessions': <UserSession>[], 'totalCount': 0};
   }
 }

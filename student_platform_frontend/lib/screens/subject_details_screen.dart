@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../logic/auth/auth_cubit.dart';
 import '../logic/auth/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'topic_player_screen.dart';
+import '../widgets/responsive_dialog.dart';
 
 class SubjectDetailsScreen extends StatefulWidget {
   final Subject subject;
@@ -41,13 +41,14 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Yangi mavzu qo\'shish'),
+      builder: (context) => ResponsiveDialog(
+        title: 'Yangi mavzu qo\'shish',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Mavzu nomi')),
-            TextField(controller: contentController, decoration: const InputDecoration(labelText: 'Dars matni (qisqacha)'), maxLines: 3),
+            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Mavzu nomi', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextField(controller: contentController, decoration: const InputDecoration(labelText: 'Dars matni (qisqacha)', border: OutlineInputBorder()), maxLines: 3),
           ],
         ),
         actions: [
@@ -77,14 +78,14 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mavzuni tahrirlash'),
+      builder: (context) => ResponsiveDialog(
+        title: 'Mavzuni tahrirlash',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Mavzu nomi')),
+            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Mavzu nomi', border: OutlineInputBorder())),
             const SizedBox(height: 16),
-            TextField(controller: contentController, decoration: const InputDecoration(labelText: 'Dars matni (qisqacha)'), maxLines: 3),
+            TextField(controller: contentController, decoration: const InputDecoration(labelText: 'Dars matni (qisqacha)', border: OutlineInputBorder()), maxLines: 3),
           ],
         ),
         actions: [
@@ -112,8 +113,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
   void _confirmDeleteTopic(Topic topic) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Diqqat!'),
+      builder: (ctx) => ResponsiveDialog(
+        title: 'Diqqat!',
         content: Text('Siz rostdan ham "${topic.title}" mavzusini o\'chirmoqchimisiz?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Yo\'q')),
@@ -126,7 +127,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
                 _fetchTopics();
               }
             },
-            child: const Text('Ha, O\'chirish'),
+            child: const Text('Ha, O\'chirish', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -176,123 +177,176 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
           : displayedTopics == null || displayedTopics.isEmpty
               ? const Center(child: Text('Bu fanda hali mavzular yo\'q.'))
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
                   itemCount: displayedTopics.length,
                   itemBuilder: (context, index) {
                     final topic = displayedTopics[index];
                     final isDisabled = topic.isDisabled;
+                    final isLast = index == displayedTopics.length - 1;
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: isDisabled ? Colors.grey.shade50 : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDisabled ? Colors.grey.shade300 : Colors.indigo.shade50, width: 1.5),
-                        boxShadow: isDisabled ? [] : [
-                          BoxShadow(color: Colors.blue.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
-                        ],
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        hoverColor: Colors.indigo.withOpacity(0.02),
-                        onTap: isDisabled && !isAdmin ? null : () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => LessonPlayerScreen(topic: topic)));
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Row(
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Timeline Column
+                          Column(
                             children: [
                               Container(
-                                width: 56,
-                                height: 56,
+                                width: 40,
+                                height: 40,
                                 decoration: BoxDecoration(
-                                  color: isDisabled ? Colors.grey.shade300 : const Color(0xFF1E3A8A).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isDisabled ? Colors.grey.shade600 : const Color(0xFF1E3A8A),
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 20,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      topic.title,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        color: isDisabled ? Colors.grey.shade500 : Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.ondemand_video_rounded, size: 16, color: isDisabled ? Colors.grey.shade400 : Colors.grey.shade600),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Video dars, Test va Materiallar',
-                                          style: TextStyle(color: isDisabled ? Colors.grey.shade400 : Colors.grey.shade600, fontSize: 13),
-                                        ),
-                                        if (isDisabled) ...[
-                                          const SizedBox(width: 16),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(6)),
-                                            child: const Row(
-                                              children: [
-                                                Icon(Icons.block, size: 12, color: Colors.orange),
-                                                SizedBox(width: 4),
-                                                Text('Muzlatilgan', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
-                                              ]
-                                            ),
-                                          ),
-                                        ]
-                                      ],
-                                    )
+                                  color: isDisabled ? Colors.grey.shade300 : const Color(0xFF1E3A8A),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    if (!isDisabled)
+                                      BoxShadow(color: const Color(0xFF1E3A8A).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
                                   ],
                                 ),
-                              ),
-                              if (isAdmin)
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                  onSelected: (val) async {
-                                    if (val == 'edit') _editTopicDialog(topic);
-                                    else if (val == 'toggle') {
-                                      await _apiService.toggleTopicStatus(topic.id);
-                                      _fetchTopics();
-                                    }
-                                    else if (val == 'delete') _confirmDeleteTopic(topic);
-                                  },
-                                  itemBuilder: (ctx) => [
-                                    const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18, color: Colors.blue), SizedBox(width: 8), Text('Tahrirlash')])),
-                                    PopupMenuItem(value: 'toggle', child: Row(children: [Icon(isDisabled ? Icons.visibility : Icons.visibility_off, size: 18, color: Colors.orange), SizedBox(width: 8), Text(isDisabled ? 'Faollashtirish' : 'Faolsizlashtirish')])),
-                                    const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text('O\'chirish', style: TextStyle(color: Colors.red))])),
-                                  ]
-                                ),
-                              if (!isAdmin && !isDisabled)
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.indigo.shade50,
-                                    shape: BoxShape.circle,
+                                child: Center(
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
-                                  child: const Icon(Icons.play_arrow_rounded, color: Colors.indigo),
+                                ),
+                              ),
+                              if (!isLast)
+                                Expanded(
+                                  child: Container(
+                                    width: 2,
+                                    color: Colors.grey.shade300,
+                                    margin: const EdgeInsets.symmetric(vertical: 4),
+                                  ),
                                 ),
                             ],
                           ),
-                        ),
+                          const SizedBox(width: 24),
+                          // Content Card
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 32.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InkWell(
+                                    onTap: isDisabled && !isAdmin ? null : () {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => LessonPlayerScreen(topic: topic)));
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      topic.title,
+                                                      style: TextStyle(
+                                                        fontSize: 20,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: isDisabled ? Colors.grey : const Color(0xFF1E3A8A),
+                                                      ),
+                                                    ),
+                                                    if (isDisabled) ...[
+                                                      const SizedBox(width: 12),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(6)),
+                                                        child: const Text('Muzlatilgan', style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                      ),
+                                                    ]
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                if (topic.createdByName != null)
+                                                  Text(
+                                                    'Qo\'shdi: ${topic.createdByName}',
+                                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontStyle: FontStyle.italic),
+                                                  ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  topic.content,
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Wrap(
+                                                  spacing: 12,
+                                                  children: [
+                                                    _buildTopicBadge(Icons.video_library_outlined, 'Video', Colors.red),
+                                                    _buildTopicBadge(Icons.quiz_outlined, 'Test', Colors.purple),
+                                                    _buildTopicBadge(Icons.description_outlined, 'Materiallar', Colors.blue),
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                          ),
+                                          if (isAdmin)
+                                            PopupMenuButton<String>(
+                                              icon: const Icon(Icons.more_vert),
+                                              onSelected: (val) async {
+                                                if (val == 'edit') _editTopicDialog(topic);
+                                                else if (val == 'toggle') {
+                                                  await _apiService.toggleTopicStatus(topic.id);
+                                                  _fetchTopics();
+                                                }
+                                                else if (val == 'delete') _confirmDeleteTopic(topic);
+                                              },
+                                              itemBuilder: (ctx) => [
+                                                const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18, color: Colors.blue), SizedBox(width: 8), Text('Tahrirlash')])),
+                                                PopupMenuItem(value: 'toggle', child: Row(children: [Icon(isDisabled ? Icons.visibility : Icons.visibility_off, size: 18, color: Colors.orange), SizedBox(width: 8), Text(isDisabled ? 'Faollashtirish' : 'Faolsizlashtirish')])),
+                                                const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text('O\'chirish', style: TextStyle(color: Colors.red))])),
+                                              ]
+                                            )
+                                          else
+                                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).slideX(begin: 0.1),
+                          ),
+                        ],
                       ),
-                    ).animate().fadeIn(delay: Duration(milliseconds: 50 * index)).slideX();
+                    );
                   },
                 ),
     );
   }
+
+  Widget _buildTopicBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
 }

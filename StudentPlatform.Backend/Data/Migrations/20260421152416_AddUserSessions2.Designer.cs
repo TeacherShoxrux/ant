@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentPlatform.Backend.Data;
 
@@ -10,9 +11,11 @@ using StudentPlatform.Backend.Data;
 namespace StudentPlatform.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421152416_AddUserSessions2")]
+    partial class AddUserSessions2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
@@ -165,11 +168,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         {
                             Id = 2,
                             Name = "Student"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Moderator"
                         });
                 });
 

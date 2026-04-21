@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentPlatform.Backend.Data;
 
@@ -10,9 +11,11 @@ using StudentPlatform.Backend.Data;
 namespace StudentPlatform.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421115833_AddSubjectGroupsAndOwner")]
+    partial class AddSubjectGroupsAndOwner
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
@@ -21,9 +24,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreatedById")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("Deadline")
@@ -47,8 +47,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
 
                     b.HasIndex("TopicId");
 
@@ -74,9 +72,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Property<int?>("Grade")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("GradedById")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("StudentComment")
                         .HasColumnType("TEXT");
 
@@ -89,8 +84,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignmentId");
-
-                    b.HasIndex("GradedById");
 
                     b.HasIndex("StudentId");
 
@@ -165,11 +158,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         {
                             Id = 2,
                             Name = "Student"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Moderator"
                         });
                 });
 
@@ -305,9 +293,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsDisabled")
                         .HasColumnType("INTEGER");
 
@@ -319,8 +304,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
 
                     b.HasIndex("SubjectId");
 
@@ -365,9 +348,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("ImagePath")
                         .HasColumnType("TEXT");
 
@@ -383,8 +363,6 @@ namespace StudentPlatform.Backend.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedById");
-
                     b.HasIndex("TopicId");
 
                     b.ToTable("Quizzes");
@@ -394,9 +372,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreatedById")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
@@ -411,8 +386,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
 
                     b.HasIndex("TopicId");
 
@@ -479,50 +452,13 @@ namespace StudentPlatform.Backend.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("StudentPlatform.Backend.Models.UserSession", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DeviceInfo")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FaceImagePath")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LocationInfo")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LoginTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("UserSessions");
-                });
-
             modelBuilder.Entity("StudentPlatform.Backend.Models.Assignment", b =>
                 {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
                     b.HasOne("StudentPlatform.Backend.Models.Topic", "Topic")
                         .WithMany("Assignments")
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("CreatedBy");
 
                     b.Navigation("Topic");
                 });
@@ -535,10 +471,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("StudentPlatform.Backend.Models.User", "GradedBy")
-                        .WithMany()
-                        .HasForeignKey("GradedById");
-
                     b.HasOne("StudentPlatform.Backend.Models.User", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
@@ -546,8 +478,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Assignment");
-
-                    b.Navigation("GradedBy");
 
                     b.Navigation("Student");
                 });
@@ -639,17 +569,11 @@ namespace StudentPlatform.Backend.Data.Migrations
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Topic", b =>
                 {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
                     b.HasOne("StudentPlatform.Backend.Models.Subject", null)
                         .WithMany("Topics")
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.TopicDocument", b =>
@@ -665,34 +589,22 @@ namespace StudentPlatform.Backend.Data.Migrations
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.TopicQuiz", b =>
                 {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
                     b.HasOne("StudentPlatform.Backend.Models.Topic", "Topic")
                         .WithMany("Quizzes")
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("CreatedBy");
-
                     b.Navigation("Topic");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.TopicVideo", b =>
                 {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
                     b.HasOne("StudentPlatform.Backend.Models.Topic", "Topic")
                         .WithMany("Videos")
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("CreatedBy");
 
                     b.Navigation("Topic");
                 });
@@ -712,17 +624,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("StudentPlatform.Backend.Models.UserSession", b =>
-                {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Subject", b =>

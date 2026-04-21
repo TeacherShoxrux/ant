@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentPlatform.Backend.Data;
 
@@ -10,9 +11,11 @@ using StudentPlatform.Backend.Data;
 namespace StudentPlatform.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421145454_AddCreatedByFields")]
+    partial class AddCreatedByFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
@@ -165,11 +168,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         {
                             Id = 2,
                             Name = "Student"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Moderator"
                         });
                 });
 
@@ -479,37 +477,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("StudentPlatform.Backend.Models.UserSession", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DeviceInfo")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FaceImagePath")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LocationInfo")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LoginTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("UserSessions");
-                });
-
             modelBuilder.Entity("StudentPlatform.Backend.Models.Assignment", b =>
                 {
                     b.HasOne("StudentPlatform.Backend.Models.User", "CreatedBy")
@@ -712,17 +679,6 @@ namespace StudentPlatform.Backend.Data.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("StudentPlatform.Backend.Models.UserSession", b =>
-                {
-                    b.HasOne("StudentPlatform.Backend.Models.User", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("StudentPlatform.Backend.Models.Subject", b =>

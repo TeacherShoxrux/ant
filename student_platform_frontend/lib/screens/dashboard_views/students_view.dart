@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../widgets/responsive_dialog.dart';
+import 'package:uuid/uuid.dart';
 
 class StudentsScreen extends StatefulWidget {
   const StudentsScreen({super.key});
@@ -20,40 +23,95 @@ class _StudentsScreenState extends State<StudentsScreen> {
   String _searchQuery = '';
   int? _selectedFilterGroupId;
 
+  // Pagination state
+  int _pageNumber = 1;
+  int _pageSize = 10;
+  int _totalCount = 0;
+  int _totalPages = 0;
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
+    _fetchGroups();
     _fetchStudents();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchGroups() async {
+    final groups = await _apiService.getGroups();
+    if (mounted) {
+      setState(() {
+        _groups = groups;
+      });
+    }
   }
 
   Future<void> _fetchStudents() async {
     setState(() => _isLoading = true);
-    final students = await _apiService.getStudents();
-    final groups = await _apiService.getGroups();
+    final response = await _apiService.getStudents(
+      pageNumber: _pageNumber,
+      pageSize: _pageSize,
+      searchTerm: _searchQuery,
+      groupId: _selectedFilterGroupId,
+    );
+    
     if (mounted) {
       setState(() {
-        _students = students;
-        _groups = groups;
+        _students = List<Map<String, dynamic>>.from(response['items'] ?? []);
+        _totalCount = response['totalCount'] ?? 0;
+        _pageNumber = response['pageNumber'] ?? 1;
+        _pageSize = response['pageSize'] ?? 10;
+        _totalPages = response['totalPages'] ?? 0;
         _isLoading = false;
       });
     }
   }
 
-  // Same logic from the old HomeScreen...
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        _searchQuery = query;
+        _pageNumber = 1; // Reset to first page on search
+      });
+      _fetchStudents();
+    });
+  }
+
+  void _onGroupFilterChanged(int? groupId) {
+    setState(() {
+      _selectedFilterGroupId = groupId;
+      _pageNumber = 1;
+    });
+    _fetchStudents();
+  }
+
+  void _changePage(int page) {
+    if (page >= 1 && page <= _totalPages) {
+      setState(() {
+        _pageNumber = page;
+      });
+      _fetchStudents();
+    }
+  }
+
   void _showAddStudentDialog() async {
     final nameController = TextEditingController();
     final surnameController = TextEditingController();
     final patronymicController = TextEditingController();
     final phoneController = TextEditingController();
-    final userController = TextEditingController();
-    final passController = TextEditingController();
     
     int? selectedGroupId;
     Uint8List? faceBytes;
     String? faceName;
     bool isSaving = false;
 
-    // Use fetched groups or refetch
     List<Map<String, dynamic>> dialogGroups = _groups.isEmpty ? await _apiService.getGroups() : _groups;
 
     if (!mounted) return;
@@ -62,148 +120,133 @@ class _StudentsScreenState extends State<StudentsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Yangi Talaba Qo\'shish', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                      const SizedBox(height: 32),
-                      
-                      Center(
-                        child: InkWell(
-                          onTap: () async {
-                            FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image, withData: true);
-                            if (result != null) {
-                              setDialogState(() {
-                                faceBytes = result.files.first.bytes;
-                                faceName = result.files.first.name;
-                              });
-                            }
-                          },
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: faceBytes != null ? MemoryImage(faceBytes!) : null,
-                            child: faceBytes == null ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey) : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Ism*', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Familiya*', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: patronymicController, decoration: const InputDecoration(labelText: 'Sharifi', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefon raqami', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<int>(
-                              value: selectedGroupId,
-                              decoration: const InputDecoration(labelText: 'Guruh', border: OutlineInputBorder()),
-                              items: dialogGroups.map((g) => DropdownMenuItem<int>(value: g['id'], child: Text(g['name']))).toList(),
-                              onChanged: (val) => setDialogState(() => selectedGroupId = val),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            decoration: BoxDecoration(color: const Color(0xFF1E3A8A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                            child: IconButton(
-                              onPressed: () async {
-                                final gController = TextEditingController();
-                                final name = await showDialog<String>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Yangi guruh'),
-                                    content: TextField(controller: gController, decoration: const InputDecoration(labelText: 'Guruh nomi')),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Bekor qilish')),
-                                      ElevatedButton(onPressed: () => Navigator.pop(ctx, gController.text), child: const Text('Qo\'shish')),
-                                    ],
-                                  ),
-                                );
-                                if (name != null && name.isNotEmpty) {
-                                  final newG = await _apiService.createGroup(name);
-                                  if (newG != null) {
-                                    final updatedGroups = await _apiService.getGroups();
-                                    setDialogState(() {
-                                      dialogGroups = updatedGroups;
-                                      selectedGroupId = newG['id'];
-                                    });
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.group_add, color: Color(0xFF1E3A8A)),
-                              tooltip: 'Yangi guruh yaratish',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                      const Text('Tizimga kirish ma\'lumotlari', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                      const SizedBox(height: 16),
-                      TextField(controller: userController, decoration: const InputDecoration(labelText: 'Login*', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: passController, decoration: const InputDecoration(labelText: 'Parol*', border: OutlineInputBorder()), obscureText: true),
-                      
-                      const SizedBox(height: 40),
-                      if (isSaving) const Center(child: CircularProgressIndicator()),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: isSaving ? null : () async {
-                            if (nameController.text.isEmpty || surnameController.text.isEmpty || userController.text.isEmpty || passController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yulduzcha bilan belgilangan maydonlarni to\'ldiring')));
-                              return;
-                            }
-                            if (selectedGroupId == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guruhni tanlash majburiy!')));
-                              return;
-                            }
-                            if (faceBytes == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba yuz rasmini yuklash majburiy!')));
-                              return;
-                            }
-                            
-                            setDialogState(() => isSaving = true);
-                            final success = await _apiService.createStudent(
-                              fullName: '${nameController.text} ${surnameController.text}',
-                              patronymic: patronymicController.text,
-                              username: userController.text,
-                              password: passController.text,
-                              phoneNumber: phoneController.text,
-                              groupId: selectedGroupId,
-                              imageBytes: faceBytes,
-                              imageName: faceName,
-                            );
-                            if (success && mounted) {
-                              Navigator.pop(context);
-                              _fetchStudents();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba muvaffaqiyatli qo\'shildi')));
-                            } else {
-                              setDialogState(() => isSaving = false);
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi. Iltimos barcha ma\'lumotlarni tekshiring.')));
-                            }
-                          },
-                          child: const Text('Saqlash', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+          return ResponsiveDialog(
+            title: 'Yangi Talaba Qo\'shish',
+            maxWidth: 700,
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: InkWell(
+                    onTap: () async {
+                      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image, withData: true);
+                      if (result != null) {
+                        setDialogState(() {
+                          faceBytes = result.files.first.bytes;
+                          faceName = result.files.first.name;
+                        });
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: faceBytes != null ? MemoryImage(faceBytes!) : null,
+                      child: faceBytes == null ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey) : null,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 32),
+
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Ism*', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Familiya*', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: patronymicController, decoration: const InputDecoration(labelText: 'Sharifi', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefon raqami', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        value: selectedGroupId,
+                        decoration: const InputDecoration(labelText: 'Guruh', border: OutlineInputBorder()),
+                        items: dialogGroups.map((g) => DropdownMenuItem<int>(value: g['id'], child: Text(g['name']))).toList(),
+                        onChanged: (val) => setDialogState(() => selectedGroupId = val),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(color: const Color(0xFF1E3A8A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      child: IconButton(
+                        onPressed: () async {
+                          final gController = TextEditingController();
+                          final name = await showDialog<String>(
+                            context: context,
+                            builder: (ctx) => ResponsiveDialog(
+                              title: 'Yangi guruh',
+                              content: TextField(controller: gController, decoration: const InputDecoration(labelText: 'Guruh nomi')),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Bekor qilish')),
+                                ElevatedButton(onPressed: () => Navigator.pop(ctx, gController.text), child: const Text('Qo\'shish')),
+                              ],
+                            ),
+                          );
+                          if (name != null && name.isNotEmpty) {
+                            final newG = await _apiService.createGroup(name);
+                            if (newG != null) {
+                              final updatedGroups = await _apiService.getGroups();
+                              setDialogState(() {
+                                dialogGroups = updatedGroups;
+                                selectedGroupId = newG['id'];
+                              });
+                              _fetchGroups();
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.group_add, color: Color(0xFF1E3A8A)),
+                        tooltip: 'Yangi guruh yaratish',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            actions: [
+              if (isSaving) const CircularProgressIndicator()
+              else ...[
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isEmpty || surnameController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yulduzcha bilan belgilangan maydonlarni to\'ldiring')));
+                      return;
+                    }
+                    if (selectedGroupId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guruhni tanlash majburiy!')));
+                      return;
+                    }
+                    if (faceBytes == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba yuz rasmini yuklash majburiy!')));
+                      return;
+                    }
+                    
+                    setDialogState(() => isSaving = true);
+                    final String generatedUuid = const Uuid().v4();
+                    final success = await _apiService.createStudent(
+                      fullName: '${nameController.text} ${surnameController.text}',
+                      patronymic: patronymicController.text,
+                      username: generatedUuid,
+                      password: generatedUuid,
+                      phoneNumber: phoneController.text,
+                      groupId: selectedGroupId,
+                      imageBytes: faceBytes,
+                      imageName: faceName,
+                    );
+                    if (success && mounted) {
+                      Navigator.pop(context);
+                      _fetchStudents();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talaba muvaffaqiyatli qo\'shildi')));
+                    } else {
+                      setDialogState(() => isSaving = false);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Xatolik yuz berdi.')));
+                    }
+                  },
+                  child: const Text('Saqlash'),
+                ),
+              ]
+            ],
           );
         },
       ),
@@ -218,10 +261,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Talaba ma\'lumotlari', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+      builder: (context) => ResponsiveDialog(
+        title: 'Talaba ma\'lumotlari',
         content: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
               radius: 60,
@@ -269,8 +311,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
   void _confirmDeleteStudent(Map<String, dynamic> student) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Diqqat!'),
+      builder: (ctx) => ResponsiveDialog(
+        title: 'Diqqat!',
         content: Text('Siz rostdan ham "${student['fullName']}" talabasini ro\'yxatdan o\'chirmoqchimisiz?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Yo\'q')),
@@ -283,7 +325,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 _fetchStudents();
               }
             },
-            child: const Text('Ha, O\'chirish'),
+            child: const Text('Ha, O\'chirish', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -296,128 +338,153 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final surnameController = TextEditingController(text: fullName.length > 1 ? fullName.sublist(1).join(' ') : '');
     final patronymicController = TextEditingController(text: student['patronymic']);
     final phoneController = TextEditingController(text: student['phoneNumber']);
-    final userController = TextEditingController(text: student['username']);
     
     int? selectedGroupId = student['groupId'];
     Uint8List? faceBytes;
     String? faceName;
     bool isSaving = false;
 
-    List<Map<String, dynamic>> dialogGroups = _groups;
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Talaba ma\'lumotlarini tahrirlash', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                      const SizedBox(height: 32),
-                      
-                      Center(
-                        child: InkWell(
-                          onTap: () async {
-                            FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image, withData: true);
-                            if (result != null) {
-                              setDialogState(() {
-                                faceBytes = result.files.first.bytes;
-                                faceName = result.files.first.name;
-                              });
-                            }
-                          },
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: faceBytes != null 
-                              ? MemoryImage(faceBytes!) 
-                              : (student['imagePath'] != null ? NetworkImage('http://localhost:5297${student['imagePath']}') : null),
-                            child: (faceBytes == null && student['imagePath'] == null) ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey) : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Ism*', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Familiya*', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: patronymicController, decoration: const InputDecoration(labelText: 'Sharifi', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefon raqami', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      
-                      DropdownButtonFormField<int>(
-                        value: selectedGroupId,
-                        decoration: const InputDecoration(labelText: 'Guruh', border: OutlineInputBorder()),
-                        items: dialogGroups.map((g) => DropdownMenuItem<int>(value: g['id'], child: Text(g['name']))).toList(),
-                        onChanged: (val) => setDialogState(() => selectedGroupId = val),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(controller: userController, decoration: const InputDecoration(labelText: 'Login*', border: OutlineInputBorder())),
-                      
-                      const SizedBox(height: 40),
-                      if (isSaving) const Center(child: CircularProgressIndicator()),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: isSaving ? null : () async {
-                            if (nameController.text.isEmpty || surnameController.text.isEmpty || userController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Majburiy maydonlarni to\'ldiring')));
-                              return;
-                            }
-                            
-                            setDialogState(() => isSaving = true);
-                            final success = await _apiService.updateStudent(
-                              id: student['id'],
-                              fullName: '${nameController.text} ${surnameController.text}',
-                              patronymic: patronymicController.text,
-                              username: userController.text,
-                              phoneNumber: phoneController.text,
-                              groupId: selectedGroupId,
-                              imageBytes: faceBytes,
-                              imageName: faceName,
-                            );
-                            if (success && mounted) {
-                              Navigator.pop(context);
-                              _fetchStudents();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O\'zgarishlar saqlandi')));
-                            } else {
-                              setDialogState(() => isSaving = false);
-                            }
-                          },
-                          child: const Text('O\'zgarishlarni saqlash', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+          return ResponsiveDialog(
+            title: 'Talaba ma\'lumotlarini tahrirlash',
+            maxWidth: 700,
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: InkWell(
+                    onTap: () async {
+                      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image, withData: true);
+                      if (result != null) {
+                        setDialogState(() {
+                          faceBytes = result.files.first.bytes;
+                          faceName = result.files.first.name;
+                        });
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: faceBytes != null 
+                        ? MemoryImage(faceBytes!) 
+                        : (student['imagePath'] != null ? NetworkImage('http://localhost:5297${student['imagePath']}') : null),
+                      child: (faceBytes == null && student['imagePath'] == null) ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey) : null,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 32),
+
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Ism*', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Familiya*', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: patronymicController, decoration: const InputDecoration(labelText: 'Sharifi', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefon raqami', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                
+                DropdownButtonFormField<int>(
+                  value: selectedGroupId,
+                  decoration: const InputDecoration(labelText: 'Guruh', border: OutlineInputBorder()),
+                  items: _groups.map((g) => DropdownMenuItem<int>(value: g['id'], child: Text(g['name']))).toList(),
+                  onChanged: (val) => setDialogState(() => selectedGroupId = val),
+                ),
+              ],
             ),
+            actions: [
+              if (isSaving) const CircularProgressIndicator()
+              else ...[
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isEmpty || surnameController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Majburiy maydonlarni to\'ldiring')));
+                      return;
+                    }
+                    setDialogState(() => isSaving = true);
+                    final success = await _apiService.updateStudent(
+                      id: student['id'],
+                      fullName: '${nameController.text} ${surnameController.text}',
+                      patronymic: patronymicController.text,
+                      username: student['username'],
+                      phoneNumber: phoneController.text,
+                      groupId: selectedGroupId,
+                      imageBytes: faceBytes,
+                      imageName: faceName,
+                    );
+                    if (success && mounted) {
+                      Navigator.pop(context);
+                      _fetchStudents();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O\'zgarishlar saqlandi')));
+                    } else {
+                      setDialogState(() => isSaving = false);
+                    }
+                  },
+                  child: const Text('Saqlash'),
+                ),
+              ]
+            ],
           );
         },
       ),
     );
   }
 
+  List<Widget> _buildPageNumberButtons() {
+    List<Widget> buttons = [];
+    int startPage = _pageNumber > 2 ? _pageNumber - 1 : 1;
+    int endPage = _pageNumber < _totalPages - 1 ? _pageNumber + 1 : _totalPages;
+
+    if (startPage > 1) {
+      buttons.add(_buildPageButton(1));
+      if (startPage > 2) {
+        buttons.add(const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('...')));
+      }
+    }
+
+    for (int i = startPage; i <= endPage; i++) {
+        buttons.add(_buildPageButton(i));
+    }
+
+    if (endPage < _totalPages) {
+      if (endPage < _totalPages - 1) {
+        buttons.add(const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('...')));
+      }
+      buttons.add(_buildPageButton(_totalPages));
+    }
+
+    return buttons;
+  }
+
+  Widget _buildPageButton(int page) {
+    final isActive = _pageNumber == page;
+    return InkWell(
+      onTap: () => _changePage(page),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF1E3A8A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? const Color(0xFF1E3A8A) : Colors.grey.shade300),
+        ),
+        child: Text(
+          '$page',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isActive ? Colors.white : Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-
-    final filteredStudents = _students?.where((s) {
-      final matchesQuery = s['fullName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
-      final matchesGroup = _selectedFilterGroupId == null || s['groupId'] == _selectedFilterGroupId;
-      return matchesQuery && matchesGroup;
-    }).toList();
-
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -435,7 +502,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   ).animate().fadeIn().slideY(begin: 0.2),
                   const SizedBox(height: 8),
                   Text(
-                    filteredStudents != null ? 'Jami: ${filteredStudents.length} ta talaba' : 'Yuklanmoqda...',
+                    _isLoading ? 'Yuklanmoqda...' : 'Jami: $_totalCount ta talaba',
                     style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ).animate().fadeIn(delay: 100.ms),
                 ],
@@ -460,9 +527,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  onChanged: (val) {
-                    setState(() => _searchQuery = val);
-                  },
+                  onChanged: _onSearchChanged,
                 ),
               ),
               const SizedBox(width: 16),
@@ -480,24 +545,23 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     const DropdownMenuItem<int?>(value: null, child: Text('Barcha guruhlar')),
                     ..._groups.map((g) => DropdownMenuItem<int?>(value: g['id'], child: Text(g['name'])))
                   ],
-                  onChanged: (val) {
-                    setState(() => _selectedFilterGroupId = val);
-                  },
+                  onChanged: _onGroupFilterChanged,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
           
-          if (filteredStudents == null || filteredStudents.isEmpty)
+          if (_isLoading && (_students == null || _students!.isEmpty))
+            const Expanded(child: Center(child: CircularProgressIndicator()))
+          else if (_students == null || _students!.isEmpty)
             const Expanded(child: Center(child: Text('Talabalar mavjud emas.')))
-          else
+          else ...[
             Expanded(
               child: ListView.builder(
-                itemCount: filteredStudents.length,
+                itemCount: _students!.length,
                 itemBuilder: (context, index) {
-                  final student = filteredStudents[index];
-                  // Find group name
+                  final student = _students![index];
                   final gId = student['groupId'];
                   final gMap = _groups.where((g) => g['id'] == gId).toList();
                   final groupName = gMap.isNotEmpty ? gMap.first['name'] : 'Biriktirilmagan';
@@ -585,8 +649,67 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 },
               ),
             ),
+            const SizedBox(height: 16),
+            // Pagination controls
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 12,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Har sahifada: '),
+                      DropdownButton<int>(
+                        value: _pageSize,
+                        items: [5, 10, 20, 50].map((int value) {
+                          return DropdownMenuItem<int>(
+                            value: value,
+                            child: Text(value.toString()),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _pageSize = val;
+                              _pageNumber = 1;
+                            });
+                            _fetchStudents();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  if (_totalPages > 0)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: _pageNumber > 1 ? () => _changePage(_pageNumber - 1) : null,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        ..._buildPageNumberButtons(),
+                        IconButton(
+                          onPressed: _pageNumber < _totalPages ? () => _changePage(_pageNumber + 1) : null,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ],
+                    ),
+                  Text('Jami: $_totalCount ta', style: const TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+          ]
         ],
       ),
     );
   }
 }
+

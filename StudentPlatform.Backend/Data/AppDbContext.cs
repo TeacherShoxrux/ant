@@ -21,15 +21,26 @@ public class AppDbContext : DbContext
     public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
     public DbSet<TestResult> TestResults { get; set; }
     public DbSet<Group> Groups { get; set; }
+    public DbSet<SubjectGroup> SubjectGroups { get; set; }
+    public DbSet<UserSession> UserSessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Seed Roles
+        modelBuilder.Entity<SubjectGroup>()
+            .HasKey(sg => new { sg.SubjectId, sg.GroupId });
+            
+        modelBuilder.Entity<Subject>()
+            .HasOne(s => s.CreatedBy)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedById)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Role>().HasData(
             new Role { Id = 1, Name = "Admin" },
-            new Role { Id = 2, Name = "Student" }
+            new Role { Id = 2, Name = "Student" },
+            new Role { Id = 3, Name = "Moderator" }
         );
 
         // Seed Admin User (Default: admin / admin123)

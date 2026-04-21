@@ -50,7 +50,7 @@ class _MainLayoutState extends State<MainLayout> {
                 ),
               ),
         title: const Text(
-          'Student Platform',
+          'Interfeys',
           style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
         ),
         actions: [
@@ -105,6 +105,7 @@ class _MainLayoutState extends State<MainLayout> {
   Widget _buildSidebar(BuildContext context, {required bool isDrawer}) {
     final authState = context.read<AuthCubit>().state;
     final isAdmin = authState is AuthAuthenticated && authState.isAdmin;
+    final isSuperAdmin = authState is AuthAuthenticated && authState.isSuperAdmin;
     final currentPath = GoRouterState.of(context).uri.toString();
 
     final sidebar = Container(
@@ -117,7 +118,7 @@ class _MainLayoutState extends State<MainLayout> {
               height: 100,
               padding: const EdgeInsets.only(top: 40, left: 16),
               alignment: Alignment.centerLeft,
-              child: const Text('HEMIS Menu', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              child: const Text('Interfeys Menu', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
             ),
           const SizedBox(height: 16),
           
@@ -125,8 +126,12 @@ class _MainLayoutState extends State<MainLayout> {
           _buildNavItem(context, 'Mening fanlarim', Icons.menu_book_outlined, '/subjects', currentPath, isDrawer: isDrawer),
           _buildNavItem(context, 'O\'zlashtirish', Icons.bar_chart_outlined, '/grades', currentPath, isDrawer: isDrawer),
           
-          if (isAdmin)
+          if (isAdmin) ...[
             _buildNavItem(context, 'Talabalar (Admin)', Icons.people_outline, '/students', currentPath, isDrawer: isDrawer),
+            if (isSuperAdmin)
+              _buildNavItem(context, 'Adminlar (Admin)', Icons.admin_panel_settings_outlined, '/admins', currentPath, isDrawer: isDrawer),
+            _buildNavItem(context, 'Login Tarixi (Admin)', Icons.history, '/sessions', currentPath, isDrawer: isDrawer),
+          ],
             
           _buildNavItem(context, 'Profil', Icons.person_outline, '/profile', currentPath, isDrawer: isDrawer),
           
@@ -137,7 +142,7 @@ class _MainLayoutState extends State<MainLayout> {
             title: const Text('Tizimdan chiqish', style: TextStyle(color: Colors.white70)),
             onTap: () {
               if (isDrawer) Navigator.pop(context);
-              context.read<AuthCubit>().logout();
+              _showLogoutConfirmation(context);
             },
           ),
           const SizedBox(height: 16),
@@ -146,6 +151,36 @@ class _MainLayoutState extends State<MainLayout> {
     );
 
     return isDrawer ? Drawer(child: sidebar) : sidebar;
+  }
+
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Tizimdan chiqish'),
+          ],
+        ),
+        content: const Text('Haqiqatdan ham tizimdan chiqishni xohlaysizmi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Yo\'q', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<AuthCubit>().logout();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Ha, chiqish', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNavItem(BuildContext context, String title, IconData icon, String path, String currentPath, {required bool isDrawer}) {

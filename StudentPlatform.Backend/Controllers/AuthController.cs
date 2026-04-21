@@ -33,14 +33,52 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto loginDto)
     {
+        var loginInput = loginDto.Username.Trim();
         var user = await _context.Users
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == loginInput.ToLower() || u.PhoneNumber == loginInput);
 
-        if (user == null || user.IsDisabled || (user.PasswordHash != loginDto.Password)) 
+        if (user == null || user.IsDisabled || (user.PasswordHash.Trim() != loginDto.Password.Trim())) 
         {
             return Unauthorized("Login yoki parol xato, yoki profil bloklangan.");
         }
+
+        // Create Session Record
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+        string location = "Noma'lum";
+
+        if (!string.IsNullOrEmpty(ip) && ip != "::1" && ip != "127.0.0.1")
+        {
+            try
+            {
+                using var client = new HttpClient();
+                var response = await client.GetStringAsync($"http://ip-api.com/json/{ip}");
+                using var jsonDoc = System.Text.Json.JsonDocument.Parse(response);
+                if (jsonDoc.RootElement.TryGetProperty("status", out var statusProp) && statusProp.GetString() == "success")
+                {
+                    var city = jsonDoc.RootElement.GetProperty("city").GetString();
+                    var country = jsonDoc.RootElement.GetProperty("country").GetString();
+                    location = $"{city}, {country}";
+                }
+            }
+            catch { /* Ignore ip-api errors */ }
+        }
+        else if (ip == "::1" || ip == "127.0.0.1")
+        {
+            location = "Local Network (Localhost)";
+        }
+
+        var session = new UserSession
+        {
+            StudentId = user.Id,
+            IpAddress = ip,
+            DeviceInfo = string.IsNullOrEmpty(userAgent) ? "Noma'lum" : (userAgent.Length > 200 ? userAgent.Substring(0, 200) : userAgent),
+            LocationInfo = location,
+            FaceImagePath = null // Text logins shouldn't have a face image
+        };
+        _context.UserSessions.Add(session);
+        await _context.SaveChangesAsync();
 
         var token = GenerateJwtToken(user);
 
@@ -58,7 +96,11 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> FaceLogin(IFormFile faceImage)
     {
         if (faceImage == null || faceImage.Length == 0) return BadRequest("Rasm yuborilmadi.");
-        var fileName = Guid.NewGuid() + faceImage.FileName;
+        
+        var ext = Path.GetExtension(faceImage.FileName);
+        if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+        var fileName = Guid.NewGuid().ToString() + ext;
+        
         var imagePath = Path.Combine("wwwroot/temp/uploads", fileName);
          if (!Directory.Exists("wwwroot/temp/uploads"))
             {
@@ -92,6 +134,43 @@ public class AuthController : ControllerBase
         var user = studentsWithImages.FirstOrDefault(u => u.Id == matchedStudentId);
 
         if (user == null) return Unauthorized("Yuz aniqlanmadi.");
+
+        // Create Session Record
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+        string location = "Noma'lum";
+
+        if (!string.IsNullOrEmpty(ip) && ip != "::1" && ip != "127.0.0.1")
+        {
+            try
+            {
+                using var client = new HttpClient();
+                var response = await client.GetStringAsync($"http://ip-api.com/json/{ip}");
+                using var jsonDoc = System.Text.Json.JsonDocument.Parse(response);
+                if (jsonDoc.RootElement.TryGetProperty("status", out var statusProp) && statusProp.GetString() == "success")
+                {
+                    var city = jsonDoc.RootElement.GetProperty("city").GetString();
+                    var country = jsonDoc.RootElement.GetProperty("country").GetString();
+                    location = $"{city}, {country}";
+                }
+            }
+            catch { /* Ignore ip-api errors */ }
+        }
+        else if (ip == "::1" || ip == "127.0.0.1")
+        {
+            location = "Local Network (Localhost)";
+        }
+
+        var session = new UserSession
+        {
+            StudentId = user.Id,
+            IpAddress = ip,
+            DeviceInfo = string.IsNullOrEmpty(userAgent) ? "Noma'lum" : (userAgent.Length > 200 ? userAgent.Substring(0, 200) : userAgent), // Truncate just in case
+            LocationInfo = location,
+            FaceImagePath = $"/temp/uploads/{fileName}"
+        };
+        _context.UserSessions.Add(session);
+        await _context.SaveChangesAsync();
 
         var token = GenerateJwtToken(user);
 
